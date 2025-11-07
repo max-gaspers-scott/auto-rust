@@ -1,6 +1,10 @@
-use std::{fs::{self, File}, io::Write, process::Command};
+use std::{
+    fs::{self, File},
+    io::Write,
+    process::Command,
+};
 
-use ollama_rs::{coordinator::Coordinator, generation::chat::ChatMessage, Ollama};
+use ollama_rs::{Ollama, coordinator::Coordinator, generation::chat::ChatMessage};
 
 /// Interacts with the Ollama LLM to process SQL generation requests.
 ///
@@ -15,14 +19,19 @@ use ollama_rs::{coordinator::Coordinator, generation::chat::ChatMessage, Ollama}
 /// # Returns
 ///
 /// Returns a `Result` containing the generated SQL as a string, or an error if the operation fails.
-pub async fn gen_sql(project_dir: std::path::PathBuf, file_name: String, sql_task: String) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+pub async fn gen_sql(
+    project_dir: std::path::PathBuf,
+    file_name: String,
+    sql_task: String,
+) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
     let model = "llama3.2:latest".to_string();
-    
+
     let ollama = Ollama::default();
     let history = vec![];
     let mut coordinator = Coordinator::new(ollama, model, history);
-        
-    let prompt = format!(r#"you are a postgresSQL database designer. Here is how you should write postgres SQL code to define a database.
+
+    let prompt = format!(
+        r#"you are a postgresSQL database designer. Here is how you should write postgres SQL code to define a database.
     
     Tables should be defined with CREATE TABLE IF NOT EXISTS. 
     Only use these datatypes: 
@@ -88,14 +97,16 @@ pub async fn gen_sql(project_dir: std::path::PathBuf, file_name: String, sql_tas
 
     
 
-    now {}"#, sql_task);
+    now {}"#,
+        sql_task
+    );
 
-    // test python process 
+    // test python process
     let output = Command::new("./.venv/bin/python3")
         .arg("llm.py")
         .arg(prompt.clone())
         .output()
-        .expect("Failed to execute Python command");
+        .expect("Failed to execute Python command (did you creat the python .venv) ");
 
     // Check if Python script executed successfully
     if !output.status.success() {
@@ -103,16 +114,16 @@ pub async fn gen_sql(project_dir: std::path::PathBuf, file_name: String, sql_tas
         eprintln!("Python script failed with error: {}", error_msg);
         return Err(Box::new(std::io::Error::new(
             std::io::ErrorKind::Other,
-            format!("Python script execution failed: {}", error_msg)
+            format!("Python script execution failed: {}", error_msg),
         )));
     }
 
     let sql = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    
+
     if sql.is_empty() {
         return Err(Box::new(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
-            "Python script returned empty SQL"
+            "Python script returned empty SQL",
         )));
     }
 
@@ -120,16 +131,16 @@ pub async fn gen_sql(project_dir: std::path::PathBuf, file_name: String, sql_tas
 
     let migrations_dir = project_dir.join("migrations");
     let sql_path = migrations_dir.join("0001_data.sql");
-    
+
     println!("Creating SQL file at: {}", sql_path.display());
-    
+
     // Create parent directories
     println!("Creating directory: {}", migrations_dir.display());
     fs::create_dir_all(&migrations_dir).map_err(|e| {
         eprintln!("Error creating directory: {}", e);
         e
     })?;
-    
+
     // Create and write to the file
     println!("Creating file: {}", sql_path.display());
     let mut file = File::create(&sql_path).map_err(|e| {

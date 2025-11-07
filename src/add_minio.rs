@@ -1,15 +1,16 @@
-use std::{fs::OpenOptions, io::{self, BufWriter, Write}};
-
-
-
+use std::{
+    fs::OpenOptions,
+    io::{self, BufWriter, Write},
+};
 
 pub fn add_minio(file_path: &std::path::Path) -> Result<String, io::Error> {
     // Ensure parent directories exist
     if let Some(parent) = file_path.parent() {
         std::fs::create_dir_all(parent)?;
     }
-    
-    let funk_str = format!(r###"
+
+    let funk_str = format!(
+        r###"
 async fn generate_signed_url(object_key: String) -> Result<String, anyhow::Error> {{
     let endpoint = env::var("MINIO_ENDPOINT")
         .unwrap_or_else(|_| "localhost:9001".to_string());
@@ -41,7 +42,6 @@ async fn generate_signed_url(object_key: String) -> Result<String, anyhow::Error
     Ok(presigned_url)
 }}
     
-use axum::response::IntoResponse;
 
 async fn get_signed_url(
     Path(video_path): Path<String>,
@@ -84,7 +84,8 @@ async fn upload_video(
             "file_name": "file.txt"
         }})));
 }}
-    "###);
+    "###
+    );
 
     // Open file with proper error handling
     let file = OpenOptions::new()
@@ -96,10 +97,9 @@ async fn upload_video(
             eprintln!("Error opening file {}: {}", file_path.display(), e);
             e
         })?;
-        
+
     let mut file = BufWriter::new(file);
     file.write(funk_str.as_bytes())?;
 
     Ok("upload_video".to_string())
 }
-

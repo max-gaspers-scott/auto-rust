@@ -6,9 +6,9 @@ function App() {
   const [apiStatus, setApiStatus] = useState('');
 
   const checkApiHealth = async () => {
-    const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3002';
+    const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8081';
     try {
-      const response = await fetch(`${apiUrl}/api/health`);
+      const response = await fetch(`${apiUrl}/health`);
       if (response.ok) {
         const data = await response.text();
         // The user said the endpoint should return 'healthy' or an error.

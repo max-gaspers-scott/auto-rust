@@ -6,7 +6,7 @@ pub fn add_top_boilerplate(file_path: &std::path::Path) -> Result<(), io::Error>
     if let Some(parent) = file_path.parent() {
         std::fs::create_dir_all(parent)?;
     }
-    
+
     let mut file = OpenOptions::new()
         .write(true) // Enable writing to the file.
         .create(true) // Create the file if it doesn't exist.
@@ -38,30 +38,34 @@ use tower_http::cors::{AllowOrigin, CorsLayer};
 use axum::http::Method;
 use reqwest;
 
+use axum::response::{Html, IntoResponse};
+use tower::service_fn;
+use tower_http::services::ServeDir;
+
 
 "###;
     file.write_all(top_boiler.as_bytes())?;
 
     Ok(())
-} 
+}
 
 pub fn add_axum_end(funcs: Vec<String>, file_path: &std::path::Path) -> Result<(), io::Error> {
     // Ensure parent directories exist
     if let Some(parent) = file_path.parent() {
         std::fs::create_dir_all(parent)?;
     }
-    
+
     // Create tests directory structure
     let project_root = file_path.parent().unwrap().parent().unwrap();
     crate::add_tests::create_test_directory_structure(project_root)?;
     crate::add_tests::add_test_dependencies_to_cargo_toml(project_root)?;
-    
+
     // TODO: Pass table names to generate database-specific test utilities
     // crate::add_tests::generate_database_test_utilities(project_root, &table_names)?;
     // crate::add_tests::generate_crud_tests(project_root, &table_names)?;
     // crate::add_tests::generate_query_param_tests(project_root, &table_names)?;
     // crate::add_tests::generate_error_handling_tests(project_root, &table_names)?;
-    
+
     let mut file = OpenOptions::new()
         .write(true) // Enable writing to the file.
         .create(true) // Create the file if it doesn't exist.
@@ -71,12 +75,20 @@ pub fn add_axum_end(funcs: Vec<String>, file_path: &std::path::Path) -> Result<(
             eprintln!("Error opening file {}: {}", file_path.display(), e);
             e
         })?;
-    let mut routs: String = funcs.iter().map(|func| {
-        let http_method = if func.starts_with("get") { "get" } else { "post" };
-        format!("\t.route(\"/{func}\", {http_method}({func}))\n").to_string()
-    }).collect::<String>();
+    let mut routs: String = funcs
+        .iter()
+        .map(|func| {
+            let http_method = if func.starts_with("get") {
+                "get"
+            } else {
+                "post"
+            };
+            format!("\t.route(\"/{func}\", {http_method}({func}))\n").to_string()
+        })
+        .collect::<String>();
     routs.push_str("\t.route(\"/signed-urls/:video_path\", get(get_signed_url))\n");
-    let ending = format!(r###"
+    let ending = format!(
+        r###"
 async fn health() -> String {{"healthy".to_string() }}
 
 #[tokio::main]
@@ -95,10 +107,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         Err(e) => eprintln!("Error applying migrations: {{}}", e),
     }};
 
+    let static_service =
+        ServeDir::new("frontend/build").not_found_service(service_fn(|_req| async {{
+            match tokio::fs::read_to_string("frontend/build/index.html").await {{
+                Ok(body) => Ok((StatusCode::OK, Html(body)).into_response()),
+                Err(err) => Ok((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Failed to read index.html: {{}}", err),
+                )
+                    .into_response()),
+            }}
+        }}));
+
+
     let app = Router::new()
     .route("/health", get(health))
     {routs}
     .route("/python", get(python))
+    .fallback_service(static_service)
     .layer(
         CorsLayer::new()
             .allow_origin(AllowOrigin::list(vec![
@@ -117,8 +143,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
 }}
 
 
-"###);  //https://tidelabs.github.io/tidechain/tower_http/cors/struct.CorsLayer.html (may help with auth) 
-    
+"###
+    ); //https://tidelabs.github.io/tidechain/tower_http/cors/struct.CorsLayer.html (may help with auth) 
+
     file.write_all(ending.as_bytes())?; // comment for testing 
     Ok(())
 }

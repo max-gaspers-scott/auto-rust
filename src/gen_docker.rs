@@ -1,10 +1,9 @@
-use std::{fs::OpenOptions, io::Write, fs::File};
-
+use std::{fs::File, fs::OpenOptions, io::Write};
 
 pub fn gen_docker(path: &str) -> Result<(), Box<dyn std::error::Error>> {
     print!("{}\n", path);
-let docker = format!(
-"
+    let docker = format!(
+        "
 # -----------------------------------------------------------------------------
 #  Multi-stage Dockerfile for \"testing\" Rust / Axum API (production)
 # -----------------------------------------------------------------------------
@@ -35,6 +34,21 @@ RUN rustup default nightly
 COPY . .
 RUN cargo build -j 6 --release
 
+
+# -----------------------------------------------------------------------------
+# Frontend build stage
+# -----------------------------------------------------------------------------
+FROM node:18-alpine AS frontend-builder
+
+WORKDIR /app/frontend
+
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm install
+
+COPY frontend/ ./
+RUN npm run build
+
+
 # -----------------------------------------------------------------------------
 # 2. Runtime image: copy the binary into a minimal base image
 # -----------------------------------------------------------------------------
@@ -53,6 +67,7 @@ WORKDIR /app
 # Copy compiled binary & any runtime assets (e.g. migrations)
 COPY --from=builder /app/target/release/{path} ./
 COPY --from=builder /app/migrations ./migrations
+COPY --from=frontend-builder /app/frontend/build ./frontend/build
 
 # Ensure the binary is executable
 RUN chown -R appuser:appuser /app && chmod +x /app/{path}
@@ -65,16 +80,17 @@ EXPOSE 8081
 # Start the server
 CMD [\"/app/{path}\"]
 
-");
-  // Create the directory if it doesn't exist
-  //std::fs::create_dir_all(path)?;
-  
-  let dockerfile_path = format!("../{}/Dockerfile", path);
-  let mut file = File::create(&dockerfile_path)?;
-  file.write_all(docker.as_bytes())?;
-  
-  println!("Dockerfile created at {}", dockerfile_path);
-  Ok(())
+"
+    );
+    // Create the directory if it doesn't exist
+    //std::fs::create_dir_all(path)?;
+
+    let dockerfile_path = format!("../{}/Dockerfile", path);
+    let mut file = File::create(&dockerfile_path)?;
+    file.write_all(docker.as_bytes())?;
+
+    println!("Dockerfile created at {}", dockerfile_path);
+    Ok(())
 }
 
 // docker build -t pangolin-testing .
