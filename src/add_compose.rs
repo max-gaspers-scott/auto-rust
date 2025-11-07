@@ -1,25 +1,13 @@
-use std::{fs::OpenOptions, io::Write, fs::File};
-
+use std::{fs::File, fs::OpenOptions, io::Write};
 
 pub fn add_compose(path: &str) -> Result<(), Box<dyn std::error::Error>> {
     print!("{}\n", path);
-let compose = format!(
-"
+    let compose = format!(
+        "
 
 version: '3.8'
 
 services:
-  nginx:
-    image: nginx:alpine
-    ports:
-      - \"3002:80\"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-    depends_on:
-      - app
-      - frontend
-      - python
-
   db:
     image: postgres:15-alpine
     environment:
@@ -71,6 +59,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    ports:
+      - \"8081:8081\"
     environment:
       DATABASE_URL: \"postgres://dbuser:p@db:5432/data\"
       DATABASE_CONNECT_TIMEOUT: \"30\"
@@ -86,20 +76,11 @@ services:
       retries: 5
       start_period: 30s
 
-
-  frontend:
-    build:
-      context: ./frontend
-    depends_on:
-      - app
-
   python:
     build:
       context: ./fastapi-template
     depends_on:
       - app
-    ports:
-      - \"8003:8003\"
     healthcheck:
       test: [\"CMD\", \"wget\", \"--spider\", \"http://localhost:8003/health\"]
       interval: 10s
@@ -113,20 +94,20 @@ volumes:
 
 
 "
-);
-  // Create the directory if it doesn't exist
-  //std::fs::create_dir_all(path)?;
-  
-  let compose_path = format!("../{}/docker-compose.yaml", path);
-  let mut file = File::create(&compose_path)?;
-  file.write_all(compose.as_bytes())?;
-  
-  println!("compose created at {}", compose_path);
+    );
+    // Create the directory if it doesn't exist
+    //std::fs::create_dir_all(path)?;
 
-  // nginx 
+    let compose_path = format!("../{}/docker-compose.yaml", path);
+    let mut file = File::create(&compose_path)?;
+    file.write_all(compose.as_bytes())?;
 
-  let nginx = format!(
-    "events {{}}
+    println!("compose created at {}", compose_path);
+
+    // nginx
+
+    let nginx = format!(
+        "events {{}}
 
 http {{
     server {{
@@ -157,16 +138,16 @@ http {{
         }}
     }}
 }}"
-  );
+    );
 
-  let nginx_path = format!("../{}/nginx/nginx.conf", path);
-  std::fs::create_dir_all(format!("../{}/nginx", path))?;
-  let mut file = File::create(&nginx_path)?;
-  file.write_all(nginx.as_bytes())?;
-  
-  println!("nginx created at {}", nginx_path);
+    // let nginx_path = format!("../{}/nginx/nginx.conf", path);
+    // std::fs::create_dir_all(format!("../{}/nginx", path))?;
+    // let mut file = File::create(&nginx_path)?;
+    // file.write_all(nginx.as_bytes())?;
 
-  Ok(())
+    // println!("nginx created at {}", nginx_path);
+
+    Ok(())
 }
 
 // docker build -t pangolin-testing .
