@@ -97,35 +97,73 @@ pub async fn gen_sql(
 
     
 
-    now {}"#,
+    now the teask is: {}"#,
         sql_task
     );
-
-    // test python process
-    let output = Command::new("./.venv/bin/python3")
-        .arg("llm.py")
-        .arg(prompt.clone())
-        .output()
-        .expect("Failed to execute Python command (did you creat the python .venv) ");
-
-    // Check if Python script executed successfully
-    if !output.status.success() {
-        let error_msg = String::from_utf8_lossy(&output.stderr);
-        eprintln!("Python script failed with error: {}", error_msg);
-        return Err(Box::new(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("Python script execution failed: {}", error_msg),
-        )));
+    #[derive(Deserialize, Debug)]
+    struct Candidate {
+        content: ContentResponse,
     }
 
-    let sql = String::from_utf8_lossy(&output.stdout).trim().to_string();
-
-    if sql.is_empty() {
-        return Err(Box::new(std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            "Python script returned empty SQL",
-        )));
+    #[derive(Deserialize, Debug)]
+    struct ContentResponse {
+        parts: Vec<PartResponse>,
     }
+
+    #[derive(Deserialize, Debug)]
+    struct PartResponse {
+        text: String,
+    }
+
+    #[derive(Deserialize, Debug)]
+    struct GenerateContentResponse {
+        candidates: Vec<Candidate>,
+    }
+
+    let url = format!(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={}",
+        api_key
+    );
+
+    // 3. Construct the Request Body using the Serde structs
+    let request_body = GenerateContentRequest {
+        contents: vec![Content {
+            parts: vec![Part { text: prompt }],
+        }],
+    };
+
+    let client = reqwest::Client::new();
+    let response = client
+        .post(&url)
+        .header(CONTENT_TYPE, "application/json")
+        .header(ACCEPT, "application/json")
+        // reqwest::Client::post() automatically uses the body's Serialize implementation
+        // and sets the Content-Length header when sending the request body.
+        .json(&request_body)
+        .send()
+        .await?;
+
+    if response.status().is_success() {
+        // Deserialize the JSON response into our Rust struct
+        let json_response: GenerateContentResponse = response.json().await?;
+
+        if let Some(candidate) = json_response.candidates.first() {
+            if let Some(part) = candidate.content.parts.first() {
+                println!("\n✅ Gemini API Response:");
+                println!("---");
+                println!("{}", part.text);
+                println!("---");
+            }
+        } else {
+            println!("Response was successful but had no candidates.");
+        }
+    } else {
+        eprintln!("\n❌ API Request Failed!");
+        eprintln!("Status: {}", response.status());
+        eprintln!("Body: {}", response.text().await?);
+    }
+
+    let sql = "temp text ";
 
     println!("Generated SQL: {}", sql);
 
