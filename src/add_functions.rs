@@ -1,16 +1,14 @@
+use std::collections::HashMap;
 use std::fs::OpenOptions;
 use std::io;
 use std::io::BufWriter;
 use std::io::Write;
-use std::collections::HashMap;
 
-
-use crate::schema::Col;
-use convert_case::{Case, Casing};
 use crate::base_structs;
 use crate::create_type_map;
 use crate::schema;
-
+use crate::schema::Col;
+use convert_case::{Case, Casing};
 
 pub fn add_get_all_func(
     row: &base_structs::Row,
@@ -20,20 +18,72 @@ pub fn add_get_all_func(
     if let Some(parent) = file_path.parent() {
         std::fs::create_dir_all(parent)?;
     }
-    
+
     let row_name = row.name.clone();
     let func_name = format!("get_{}", row.name.clone());
     let struct_name = row.name.clone().to_case(Case::Pascal);
 
     // Generate the JSON fields for the response
-    let cols: String = row.cols.iter()
+    let cols: String = row
+        .cols
+        .iter()
         .map(|col| format!("\t\"{}\": elemint.{}, \n", col.name, col.name))
         .collect::<String>()
         .trim_end_matches(", \n")
         .to_string();
-    
+
+    struct meta_struct {
+        name: String,
+    }
+
+    struct get_funk {
+        name: String,
+    }
+
+    struct data_get_func {
+        name: String,
+    }
+
+    struct get_pipline {
+        name: String,
+        meta_struct: meta_struct,
+        get_funk: get_funk,
+        data_get_funk: data_get_func,
+        can_be_orderd: bool,
+        can_be_filterd: bool,
+    }
+
+    impl get_pipline {
+        fn query_param_struct(self) -> String {
+            r###"
+#[derive(Deserialize)]
+struct {self.name}QueryParams {{
+    order_by: Option<String>,
+    direction: Option<String>, // "asc" or "desc"
+    #[serde(flatten)]
+    filters: HashMap<String, String>,
+}}
+            "###
+        }
+        fn get_funk(self) -> String {
+            // returns string that is the function (should use syn at some )
+            r###"
+pub async fn {self.name}(
+    extract::State(pool): extract::State<PgPool>,
+    Query(query_params): Query<{row_name}QueryParams>,
+) -> Result<Json<Value>, (StatusCode, String)> {{
+    // Call data function from data module 
+    // Other business logic can also be handled here 
+    let result = data_{func_name}(extract::State(pool), axum::extract::Query(query_params)).await;
+    result
+}}
+"###
+            .to_string()
+        }
+    }
     // API layer function - calls data layer and can add business logic
-    let api_func = format!(r###"
+    let api_func = format!(
+        r###"
 
 #[derive(Deserialize)]
 struct {row_name}QueryParams {{
@@ -53,10 +103,12 @@ pub async fn {func_name}(
     let result = data_{func_name}(extract::State(pool), axum::extract::Query(query_params)).await;
     result
 }}
-"###);
-// owned_str.push_str(borrows_str)
+"###
+    );
+    // owned_str.push_str(borrows_str)
     // Data layer function - handles database operations
-    let data_func = format!(r###"
+    let data_func = format!(
+        r###"
 
 
 pub async fn data_{func_name}(
@@ -127,7 +179,8 @@ pub async fn data_{func_name}(
 
     Ok(Json(json!({{ "payload": res_json }})))
 }}
-"###);
+"###
+    );
 
     // Write both functions to the same file
     let mut file = OpenOptions::new()
@@ -143,32 +196,51 @@ pub async fn data_{func_name}(
     Ok(func_name.to_string())
 }
 
-pub fn add_insert_func(row: &base_structs::Row, file_path: &std::path::Path) -> Result<String, io::Error> {
+pub fn add_insert_func(
+    row: &base_structs::Row,
+    file_path: &std::path::Path,
+) -> Result<String, io::Error> {
     // Ensure parent directories exist
     if let Some(parent) = file_path.parent() {
         std::fs::create_dir_all(parent)?;
     }
-    
+
     let funk_name = format!("add_{}", row.name.clone());
     let struct_name = row.name.clone().to_case(Case::Pascal);
     let table_name = row.name.clone();
-    let cols_list = row.cols.iter()
-    .filter(|col| !col.auto_gen )
-    .map(|col| { // filter based on if auto generated 
+    let cols_list = row
+        .cols
+        .iter()
+        .filter(|col| !col.auto_gen)
+        .map(|col| {
+            // filter based on if auto generated
             col.name.clone()
-    }).collect::<Vec<_>>();
-    
+        })
+        .collect::<Vec<_>>();
 
-    let cols: String = cols_list.iter().map(|col| format!("{}, ", col).to_string()).collect::<String>()
-        .trim_end_matches(", ").to_string();
-    let bind_fields = cols_list.iter().enumerate().map(|(i, col)| 
-        format!("\t\t.bind(payload.{})", cols_list[i]))
-        .collect::<Vec<_>>().join("\n");
-    let fields = cols_list.iter().enumerate().map(|(i, col)| format!("${}, ", i + 1)).collect::<String>()
-        .trim_end_matches(", ").to_string();
-    
+    let cols: String = cols_list
+        .iter()
+        .map(|col| format!("{}, ", col).to_string())
+        .collect::<String>()
+        .trim_end_matches(", ")
+        .to_string();
+    let bind_fields = cols_list
+        .iter()
+        .enumerate()
+        .map(|(i, col)| format!("\t\t.bind(payload.{})", cols_list[i]))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let fields = cols_list
+        .iter()
+        .enumerate()
+        .map(|(i, col)| format!("${}, ", i + 1))
+        .collect::<String>()
+        .trim_end_matches(", ")
+        .to_string();
+
     // API layer function - calls data layer and can add business logic
-    let api_func = format!(r###"
+    let api_func = format!(
+        r###"
 pub async fn {funk_name}(
     extract::State(pool): extract::State<PgPool>,
     Json(payload): Json<{struct_name}>,
@@ -178,10 +250,12 @@ pub async fn {funk_name}(
     let result = data_{funk_name}(extract::State(pool), Json(payload)).await;
     result
 }}
-"###);
+"###
+    );
 
     // Data layer function - handles database operations
-    let data_func = format!(r###"
+    let data_func = format!(
+        r###"
 pub async fn data_{funk_name}(
     extract::State(pool): extract::State<PgPool>,
     Json(payload): Json<{struct_name}>,
@@ -198,7 +272,8 @@ pub async fn data_{funk_name}(
         Err(e) => Json(json!({{"res": format!("error: {{}}", e)}}))
     }}
 }}
-"###);
+"###
+    );
 
     // Write both functions to the same file
     let mut file = OpenOptions::new()
@@ -214,10 +289,11 @@ pub async fn data_{funk_name}(
     Ok(funk_name.to_string())
 }
 
-
-
-
-pub fn add_get_one_func(row: &base_structs::Row, col: &schema::Col, file_path: &std::path::Path) -> Result<String, io::Error> {
+pub fn add_get_one_func(
+    row: &base_structs::Row,
+    col: &schema::Col,
+    file_path: &std::path::Path,
+) -> Result<String, io::Error> {
     let type_map = create_type_map();
     let row_name = row.name.clone();
     let col_name = col.name.clone();
@@ -225,27 +301,36 @@ pub fn add_get_one_func(row: &base_structs::Row, col: &schema::Col, file_path: &
     let col_type = match type_map.get(&col.col_type[..end_index]) {
         Some(t) => t.to_string(),
         None => {
-            eprintln!("Warning: Type '{}' not found in type map for column '{}'. Defaulting to String.", col.col_type, col_name);
+            eprintln!(
+                "Warning: Type '{}' not found in type map for column '{}'. Defaulting to String.",
+                col.col_type, col_name
+            );
             "f64".to_string() // Default to String if type not found
         }
     };
     let func_name = format!("get_one_{}{}", row.name.clone(), col_name.clone());
     let struct_name = row.name.clone().to_case(Case::Pascal);
-    let cols: String = row.cols.iter().map(|col| format!("\t\"{}\": elemint.{}, \n", 
-        col.name, col.name)
-        .to_string()).collect::<String>()
-        .trim_end_matches(", ").to_string();
+    let cols: String = row
+        .cols
+        .iter()
+        .map(|col| format!("\t\"{}\": elemint.{}, \n", col.name, col.name).to_string())
+        .collect::<String>()
+        .trim_end_matches(", ")
+        .to_string();
 
     // Query struct definition
-    let query_struct = format!(r###"
+    let query_struct = format!(
+        r###"
 #[derive(Debug, Deserialize)]
 struct {row_name}{col_name}Query {{
     {col_name}: {col_type},
 }}
-"###);
+"###
+    );
 
     // API layer function - calls data layer and can add business logic
-    let api_func = format!(r###"
+    let api_func = format!(
+        r###"
 pub async fn {func_name}(
     extract::State(pool): extract::State<PgPool>,
     match_val: Query<{row_name}{col_name}Query>,
@@ -255,10 +340,12 @@ pub async fn {func_name}(
     let result = data_{func_name}(extract::State(pool), match_val).await;
     result
 }}
-"###);
+"###
+    );
 
     // Data layer function - handles database operations
-    let data_func = format!(r###"
+    let data_func = format!(
+        r###"
 pub async fn data_{func_name}(
     extract::State(pool): extract::State<PgPool>,
     match_val: Query<{row_name}{col_name}Query>,
@@ -281,7 +368,8 @@ pub async fn data_{func_name}(
 }}
 
 
-"###);
+"###
+    );
     // Write all parts to the same file
     let mut file = OpenOptions::new()
         .write(true)
@@ -296,4 +384,3 @@ pub async fn data_{func_name}(
 
     Ok(func_name.to_string())
 }
-

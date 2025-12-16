@@ -28,6 +28,7 @@ use convert_case::{Case, Casing};
 use gen_docker::gen_docker;
 use gen_examples::gen_examples;
 use gen_sql::gen_sql;
+use dotenv::dotenv;
 use gen_toml::gen_toml;
 pub use schema::{Col, extract_column_info, extract_table_names, extract_table_schemas};
 use serde::de::value::{self, Error};
@@ -77,6 +78,7 @@ fn create_rows_from_sql(file_path: &std::path::Path) -> Result<Vec<Row>, io::Err
 // docker run --name some-postgres -e POSTGRES_USER=dbuser -e POSTGRES_PASSWORD=p -e POSTGRES_DB=work -p 1111:5432 -d postgres
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
+    dotenv::dotenv().ok();
     let mut file_name = String::new();
     println!("Enter project name: ");
     io::stdin().read_line(&mut file_name)?;

@@ -1,3 +1,6 @@
+use reqwest::header::{ACCEPT, CONTENT_TYPE};
+use serde::{Deserialize, Serialize};
+use std::env;
 use std::{
     fs::{self, File},
     io::Write,
@@ -128,6 +131,10 @@ pub async fn gen_sql(
         candidates: Vec<Candidate>,
     }
 
+    let api_key = match env::var("GEMINI_API_KEY") {
+        Ok(key) => key.to_string(),
+        Err(e) => e.to_string(),
+    };
     let url = format!(
         "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={}",
         api_key
@@ -142,6 +149,7 @@ pub async fn gen_sql(
         }],
     };
 
+    let mut sql = "defalut sql, if you see this text somthing has progably gone wrong".to_string();
     let client = reqwest::Client::new();
     let response = client
         .post(&url)
