@@ -1,34 +1,26 @@
 use std::{
     fs::{self, File},
     io::Write,
-    process::Command,
 };
 
-use ollama_rs::{Ollama, coordinator::Coordinator, generation::chat::ChatMessage};
+use dotenv::dotenv;
+use reqwest::header::{ACCEPT, CONTENT_TYPE};
+use serde::{Deserialize, Serialize};
+use std::env;
 
-/// Interacts with the Ollama LLM to process SQL generation requests.
-///
-/// This function sets up a coordinator with the Ollama model and
-/// generates SQL based on the provided prompt.
-///
-/// # Arguments
-///
-/// * `project_dir` - The directory where the project is located
-/// * `file_name` - The name of the project
-///
-/// # Returns
-///
-/// Returns a `Result` containing the generated SQL as a string, or an error if the operation fails.
 pub async fn gen_sql(
     project_dir: std::path::PathBuf,
-    file_name: String,
     sql_task: String,
 ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
-    let model = "llama3.2:latest".to_string();
-
-    let ollama = Ollama::default();
-    let history = vec![];
-    let mut coordinator = Coordinator::new(ollama, model, history);
+    dotenv().ok();
+    let api_key_name = "GEMINI_API_KEY";
+    let api_key: String = match env::var(api_key_name) {
+        Ok(val) => val.trim().to_string(),
+        Err(e) => {
+            println!("couldn't interpret {api_key_name}: {e}");
+            format!("{}", e)
+        }
+    };
 
     let prompt = format!(
         r#"you are a postgresSQL database designer. Here is how you should write postgres SQL code to define a database.
@@ -97,35 +89,93 @@ pub async fn gen_sql(
 
     
 
-    now {}"#,
+    now the teask is: {}"#,
         sql_task
     );
 
-    // test python process
-    let output = Command::new("./.venv/bin/python3")
-        .arg("llm.py")
-        .arg(prompt.clone())
-        .output()
-        .expect("Failed to execute Python command (did you creat the python .venv) ");
-
-    // Check if Python script executed successfully
-    if !output.status.success() {
-        let error_msg = String::from_utf8_lossy(&output.stderr);
-        eprintln!("Python script failed with error: {}", error_msg);
-        return Err(Box::new(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("Python script execution failed: {}", error_msg),
-        )));
+    #[derive(Deserialize, Debug, Serialize)]
+    struct Part {
+        text: String,
     }
 
-    let sql = String::from_utf8_lossy(&output.stdout).trim().to_string();
-
-    if sql.is_empty() {
-        return Err(Box::new(std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            "Python script returned empty SQL",
-        )));
+    #[derive(Deserialize, Debug, Serialize)]
+    struct Content {
+        parts: Vec<Part>,
     }
+
+    #[derive(Deserialize, Debug, Serialize)]
+    struct Candidate {
+        content: ContentResponse,
+    }
+
+    #[derive(Deserialize, Debug, Serialize)]
+    struct ContentResponse {
+        parts: Vec<PartResponse>,
+    }
+
+    #[derive(Deserialize, Debug, Serialize)]
+    struct PartResponse {
+        text: String,
+    }
+
+    #[derive(Deserialize, Debug, Serialize)]
+    struct GenerateContentResponse {
+        contents: Vec<Content>,
+    }
+
+    #[derive(Deserialize, Debug, Serialize)]
+    struct GeminiRespons {
+        candidates: Vec<Candidate>,
+    }
+
+    let url = format!(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={}",
+        api_key
+    );
+
+    // 3. Construct the Request Body using the Serde structs
+    let request_body = GenerateContentResponse {
+        contents: vec![Content {
+            parts: vec![Part {
+                text: prompt.to_string(),
+            }],
+        }],
+    };
+
+    let client = reqwest::Client::new();
+    let response = client
+        .post(&url)
+        .header(CONTENT_TYPE, "application/json")
+        .header(ACCEPT, "application/json")
+        // reqwest::Client::post() automatically uses the body's Serialize implementation
+        // and sets the Content-Length header when sending the request body.
+        .json(&request_body)
+        .send()
+        .await?;
+
+    let sql = if response.status().is_success() {
+        // Deserialize the JSON response into our Rust struct
+        let json_response: GeminiRespons = response.json().await?;
+
+        // TODO: should not return "" insted do better error handeling
+        // program should not continue with empty string is somthing goes wrong at this step
+        if let Some(candidate) = json_response.candidates.first() {
+            if let Some(part) = candidate.content.parts.first() {
+                part.text.to_string()
+            } else {
+                println!("could not get part.text from api");
+                "".to_string()
+            }
+        } else {
+            println!("Response was successful but had no candidates.");
+            "".to_string()
+        }
+    } else {
+        eprintln!("\n❌ API Request Failed!");
+        eprintln!("Status: {}", response.status());
+        eprintln!("Body: {}", response.text().await?);
+        "".to_string()
+    };
 
     println!("Generated SQL: {}", sql);
 
