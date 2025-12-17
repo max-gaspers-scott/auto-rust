@@ -4,31 +4,28 @@ use std::{
     process::Command,
 };
 
-use ollama_rs::{Ollama, coordinator::Coordinator, generation::chat::ChatMessage};
+use dotenv::dotenv;
+use reqwest::header::{ACCEPT, CONTENT_TYPE};
+use serde::{Deserialize, Serialize};
+use std::env;
 
-/// Interacts with the Ollama LLM to process SQL generation requests.
-///
-/// This function sets up a coordinator with the Ollama model and
-/// generates SQL based on the provided prompt.
-///
-/// # Arguments
-///
-/// * `project_dir` - The directory where the project is located
-/// * `file_name` - The name of the project
-///
-/// # Returns
-///
-/// Returns a `Result` containing the generated SQL as a string, or an error if the operation fails.
 pub async fn gen_sql(
     project_dir: std::path::PathBuf,
     file_name: String,
     sql_task: String,
 ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
-    let model = "llama3.2:latest".to_string();
-
-    let ollama = Ollama::default();
-    let history = vec![];
-    let mut coordinator = Coordinator::new(ollama, model, history);
+    dotenv().ok();
+    let mut api_key_name = "GEMINI_API_KEY";
+    let api_key: String = match env::var(api_key_name) {
+        Ok(val) => {
+            println!("{api_key_name}: {val:?}");
+            val.trim().to_string()
+        }
+        Err(e) => {
+            println!("couldn't interpret {api_key_name}: {e}");
+            format!("{}", e)
+        }
+    };
 
     let prompt = format!(
         r#"you are a postgresSQL database designer. Here is how you should write postgres SQL code to define a database.
@@ -100,23 +97,39 @@ pub async fn gen_sql(
     now the teask is: {}"#,
         sql_task
     );
-    #[derive(Deserialize, Debug)]
+
+    #[derive(Deserialize, Debug, Serialize)]
+    struct Part {
+        text: String,
+    }
+
+    #[derive(Deserialize, Debug, Serialize)]
+    struct Content {
+        parts: Vec<Part>,
+    }
+
+    #[derive(Deserialize, Debug, Serialize)]
     struct Candidate {
         content: ContentResponse,
     }
 
-    #[derive(Deserialize, Debug)]
+    #[derive(Deserialize, Debug, Serialize)]
     struct ContentResponse {
         parts: Vec<PartResponse>,
     }
 
-    #[derive(Deserialize, Debug)]
+    #[derive(Deserialize, Debug, Serialize)]
     struct PartResponse {
         text: String,
     }
 
-    #[derive(Deserialize, Debug)]
+    #[derive(Deserialize, Debug, Serialize)]
     struct GenerateContentResponse {
+        contents: Vec<Content>,
+    }
+
+    #[derive(Deserialize, Debug, Serialize)]
+    struct GeminiRespons {
         candidates: Vec<Candidate>,
     }
 
@@ -126,9 +139,11 @@ pub async fn gen_sql(
     );
 
     // 3. Construct the Request Body using the Serde structs
-    let request_body = GenerateContentRequest {
+    let request_body = GenerateContentResponse {
         contents: vec![Content {
-            parts: vec![Part { text: prompt }],
+            parts: vec![Part {
+                text: prompt.to_string(),
+            }],
         }],
     };
 
@@ -143,12 +158,15 @@ pub async fn gen_sql(
         .send()
         .await?;
 
+    let mut sql = "temp text".to_string();
+    println!("{response:?}");
     if response.status().is_success() {
         // Deserialize the JSON response into our Rust struct
-        let json_response: GenerateContentResponse = response.json().await?;
+        let json_response: GeminiRespons = response.json().await?;
 
         if let Some(candidate) = json_response.candidates.first() {
             if let Some(part) = candidate.content.parts.first() {
+                sql = part.text.clone();
                 println!("\n✅ Gemini API Response:");
                 println!("---");
                 println!("{}", part.text);
@@ -162,8 +180,6 @@ pub async fn gen_sql(
         eprintln!("Status: {}", response.status());
         eprintln!("Body: {}", response.text().await?);
     }
-
-    let sql = "temp text ";
 
     println!("Generated SQL: {}", sql);
 
