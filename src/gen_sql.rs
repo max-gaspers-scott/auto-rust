@@ -1,7 +1,6 @@
 use std::{
     fs::{self, File},
     io::Write,
-    process::Command,
 };
 
 use dotenv::dotenv;
@@ -11,11 +10,10 @@ use std::env;
 
 pub async fn gen_sql(
     project_dir: std::path::PathBuf,
-    file_name: String,
     sql_task: String,
 ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
     dotenv().ok();
-    let mut api_key_name = "GEMINI_API_KEY";
+    let api_key_name = "GEMINI_API_KEY";
     let api_key: String = match env::var(api_key_name) {
         Ok(val) => val.trim().to_string(),
         Err(e) => {
@@ -155,15 +153,17 @@ pub async fn gen_sql(
         .send()
         .await?;
 
-    let mut sql = "temp text".to_string();
     let sql = if response.status().is_success() {
         // Deserialize the JSON response into our Rust struct
         let json_response: GeminiRespons = response.json().await?;
 
+        // TODO: should not return "" insted do better error handeling
+        // program should not continue with empty string is somthing goes wrong at this step
         if let Some(candidate) = json_response.candidates.first() {
             if let Some(part) = candidate.content.parts.first() {
                 part.text.to_string()
             } else {
+                println!("could not get part.text from api");
                 "".to_string()
             }
         } else {
@@ -174,8 +174,7 @@ pub async fn gen_sql(
         eprintln!("\n❌ API Request Failed!");
         eprintln!("Status: {}", response.status());
         eprintln!("Body: {}", response.text().await?);
-
-        "no sql generted. If you see this something has gone wrong. likly with the api to the genertive llm for SQL".to_string()
+        "".to_string()
     };
 
     println!("Generated SQL: {}", sql);
