@@ -17,10 +17,7 @@ pub async fn gen_sql(
     dotenv().ok();
     let mut api_key_name = "GEMINI_API_KEY";
     let api_key: String = match env::var(api_key_name) {
-        Ok(val) => {
-            println!("{api_key_name}: {val:?}");
-            val.trim().to_string()
-        }
+        Ok(val) => val.trim().to_string(),
         Err(e) => {
             println!("couldn't interpret {api_key_name}: {e}");
             format!("{}", e)
@@ -159,7 +156,6 @@ pub async fn gen_sql(
         .await?;
 
     let mut sql = "temp text".to_string();
-    println!("{response:?}");
     if response.status().is_success() {
         // Deserialize the JSON response into our Rust struct
         let json_response: GeminiRespons = response.json().await?;
