@@ -156,26 +156,27 @@ pub async fn gen_sql(
         .await?;
 
     let mut sql = "temp text".to_string();
-    if response.status().is_success() {
+    let sql = if response.status().is_success() {
         // Deserialize the JSON response into our Rust struct
         let json_response: GeminiRespons = response.json().await?;
 
         if let Some(candidate) = json_response.candidates.first() {
             if let Some(part) = candidate.content.parts.first() {
-                sql = part.text.clone();
-                println!("\n✅ Gemini API Response:");
-                println!("---");
-                println!("{}", part.text);
-                println!("---");
+                part.text.to_string()
+            } else {
+                "".to_string()
             }
         } else {
             println!("Response was successful but had no candidates.");
+            "".to_string()
         }
     } else {
         eprintln!("\n❌ API Request Failed!");
         eprintln!("Status: {}", response.status());
         eprintln!("Body: {}", response.text().await?);
-    }
+
+        "no sql generted. If you see this something has gone wrong. likly with the api to the genertive llm for SQL".to_string()
+    };
 
     println!("Generated SQL: {}", sql);
 
