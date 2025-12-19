@@ -34,6 +34,8 @@ pub fn add_get_all_func(
 
     struct meta_struct {
         name: String,
+        get_funk: get_funk,
+        data_get_funk, data_get_funk,
     }
 
     struct get_funk {
@@ -46,16 +48,18 @@ pub fn add_get_all_func(
 
     struct get_pipline {
         name: String,
-        meta_struct: meta_struct,
-        get_funk: get_funk,
-        data_get_funk: data_get_func,
-        can_be_orderd: bool,
-        can_be_filterd: bool,
+        function_name: String
+        // meta_struct: meta_struct,
+        // get_funk: get_funk,
+        // data_get_funk: data_get_func,
+        // can_be_orderd: bool,
+        // can_be_filterd: bool,
     }
 
     impl get_pipline {
         fn query_param_struct(self) -> String {
-            r###"
+            let name = self.name;
+            let struct_stirng = format!(r###"
 #[derive(Deserialize)]
 struct {self.name}QueryParams {{
     order_by: Option<String>,
@@ -63,24 +67,30 @@ struct {self.name}QueryParams {{
     #[serde(flatten)]
     filters: HashMap<String, String>,
 }}
-            "###
+            "###, name);
+            println!("{}", struct_stirng); // TODO: remove avter testing
+            struct_stirng
         }
-        fn get_funk(self) -> String {
-            // returns string that is the function (should use syn at some )
-            r###"
-pub async fn {self.name}(
+        fn get_data_funk(self) -> String {
+            let name = self.name;
+            let funk_name = self.funk_name;
+            // returns string that is the function (should use syn at some point)
+            let code_string = format!(r###"
+pub async fn {name}(
     extract::State(pool): extract::State<PgPool>,
     Query(query_params): Query<{row_name}QueryParams>,
 ) -> Result<Json<Value>, (StatusCode, String)> {{
     // Call data function from data module 
     // Other business logic can also be handled here 
-    let result = data_{func_name}(extract::State(pool), axum::extract::Query(query_params)).await;
+    let result = data_{self.func_name}(extract::State(pool), axum::extract::Query(query_params)).await;
     result
 }}
-"###
-            .to_string()
+"###, name);
+            println!(code_string);
+            code_string
         }
     }
+
     // API layer function - calls data layer and can add business logic
     let api_func = format!(
         r###"
