@@ -9,7 +9,7 @@ use crate::create_type_map;
 use crate::schema;
 use crate::schema::Col;
 use convert_case::{Case, Casing};
-
+use std::any::Any;
 // jot down thoguths 
 //
 struct struct_paits {
@@ -20,25 +20,36 @@ struct struct_paits {
 
 struct meta_struct_eliment_value {
     name: String,
-    value: <Type>, // need to look into this
+    value: input: &dyn Any,
 }
 
 struct meta_struct {
     name: String,
-    values = Tuple<struct_paits>
+    values = Vec!<struct_paits> // should be types not names???
 }
 
 impl meta_struct {
-    fn meta_struct_valid_value(name: String, value: <Type>) {
+    fn meta_struct_valid_value(name: String, value: &dyn Any) {
         // do type checking ...
         meta_struct_eliment_value {
             name: name,
             value: value
         }
     }
+    fn add_struct(self) -> String {
+        let name = self.name;
+        let total_string = format!(r#"""
+
+struct {self.name} {{
+        """#);
+
+        for i in self.values:
+            total_string.push(format!("{i.name}: {i.type}")) // should acount for optional with if
+    }
 
     fn add_to_db(meta_struct) {
         " a string that gets all values from struct and adds it to sql table "
+        
 
     }
 
