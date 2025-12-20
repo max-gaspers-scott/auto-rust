@@ -10,8 +10,44 @@ use crate::schema;
 use crate::schema::Col;
 use convert_case::{Case, Casing};
 
-pub fn add_get_all_func(
-    row: &base_structs::Row,
+// jot down thoguths 
+//
+struct struct_paits {
+    name: String,
+    type: String, // should be can_be_filterd
+    optional: boolean
+}
+
+struct meta_struct_eliment_value {
+    name: String,
+    value: <Type>, // need to look into this
+}
+
+struct meta_struct {
+    name: String,
+    values = Tuple<struct_paits>
+}
+
+impl meta_struct {
+    fn meta_struct_valid_value(name: String, value: <Type>) {
+        // do type checking ...
+        meta_struct_eliment_value {
+            name: name,
+            value: value
+        }
+    }
+
+    fn add_to_db(meta_struct) {
+        " a string that gets all values from struct and adds it to sql table "
+
+    }
+
+    fn get_where(stru: meta_struct, meta_struct_eliment_value) {
+        " string function that gets rows/structs from db where name = value"
+    }
+}
+
+// end joting down thoughts: &base_structs::Row,
     file_path: &std::path::Path,
 ) -> Result<String, io::Error> {
     // Ensure parent directories exist
