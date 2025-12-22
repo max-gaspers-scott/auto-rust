@@ -13,6 +13,7 @@ mod gen_examples;
 mod gen_sql;
 mod gen_toml;
 // mod llm;
+mod create_output_structs;
 mod schema;
 mod sql_funcs;
 
@@ -25,6 +26,7 @@ use add_react::create_react_app;
 pub use base_structs::{Row, create_type_map};
 use boilerplate::{add_axum_end, add_top_boilerplate};
 use convert_case::{Case, Casing};
+use create_output_structs::add_structs;
 use dotenv::dotenv;
 use gen_docker::gen_docker;
 use gen_examples::gen_examples;
@@ -174,6 +176,8 @@ async fn main() -> Result<(), std::io::Error> {
             ));
         }
     };
+
+    let _ = add_structs();
 
     let path = project_dir.join("src/main.rs");
     let mut func_names = Vec::new();
