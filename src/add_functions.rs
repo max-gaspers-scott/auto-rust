@@ -10,55 +10,60 @@ use crate::schema;
 use crate::schema::Col;
 use convert_case::{Case, Casing};
 use std::any::Any;
-// jot down thoguths 
+// jot down thoguths
 //
 struct struct_paits {
     name: String,
-    type: String, // should be can_be_filterd
-    optional: boolean
+    meta_type: String, // should be can_be_filterd
+    optional: bool,
 }
 
 struct meta_struct_eliment_value {
     name: String,
-    value: input: &dyn Any,
+    value: String,
 }
 
 struct meta_struct {
     name: String,
-    values = Vec!<struct_paits> // should be types not names???
+    values: Vec<struct_paits>, // should be types not names???
 }
 
 impl meta_struct {
-    fn meta_struct_valid_value(name: String, value: &dyn Any) {
+    fn meta_struct_valid_value(name: String, value: String) -> meta_struct_eliment_value {
         // do type checking ...
         meta_struct_eliment_value {
             name: name,
-            value: value
+            value: value,
         }
     }
-    fn add_struct(self) -> String {
-        let name = self.name;
-        let total_string = format!(r#"""
+    //     fn add_struct(self) -> String {
+    //         let name = self.name;
+    //         let total_string = format!(r#"""
+    //
+    // struct {name} {{
+    //         """#);
+    //
+    //         let _ = for i in self.values{
+    //             total_string = total_string + format!("{i.name}: {i.type}").to_string() // should acount for optional with if
+    //         };
+    //     }
 
-struct {self.name} {{
-        """#);
-
-        for i in self.values:
-            total_string.push(format!("{i.name}: {i.type}")) // should acount for optional with if
+    fn add_to_db(meta_struct: meta_struct) -> String {
+        " a string that gets all values from struct and adds it to sql table ".to_string()
     }
 
-    fn add_to_db(meta_struct) {
-        " a string that gets all values from struct and adds it to sql table "
-        
-
-    }
-
-    fn get_where(stru: meta_struct, meta_struct_eliment_value) {
-        " string function that gets rows/structs from db where name = value"
+    fn get_where(
+        stru: meta_struct,
+        meta_struct_eliment_value: meta_struct_eliment_value,
+    ) -> String {
+        " string function that gets rows/structs from db where name = value".to_string()
     }
 }
 
 // end joting down thoughts: &base_structs::Row,
+
+pub fn add_get_all_func(
+    row: &base_structs::Row,
     file_path: &std::path::Path,
 ) -> Result<String, io::Error> {
     // Ensure parent directories exist
@@ -78,65 +83,6 @@ struct {self.name} {{
         .collect::<String>()
         .trim_end_matches(", \n")
         .to_string();
-
-    struct meta_struct {
-        name: String,
-        get_funk: get_funk,
-        data_get_funk, data_get_funk,
-    }
-
-    struct get_funk {
-        name: String,
-    }
-
-    struct data_get_func {
-        name: String,
-    }
-
-    struct get_pipline {
-        name: String,
-        function_name: String
-        // meta_struct: meta_struct,
-        // get_funk: get_funk,
-        // data_get_funk: data_get_func,
-        // can_be_orderd: bool,
-        // can_be_filterd: bool,
-    }
-
-    impl get_pipline {
-        fn query_param_struct(self) -> String {
-            let name = self.name;
-            let struct_stirng = format!(r###"
-#[derive(Deserialize)]
-struct {self.name}QueryParams {{
-    order_by: Option<String>,
-    direction: Option<String>, // "asc" or "desc"
-    #[serde(flatten)]
-    filters: HashMap<String, String>,
-}}
-            "###, name);
-            println!("{}", struct_stirng); // TODO: remove avter testing
-            struct_stirng
-        }
-        fn get_data_funk(self) -> String {
-            let name = self.name;
-            let funk_name = self.funk_name;
-            // returns string that is the function (should use syn at some point)
-            let code_string = format!(r###"
-pub async fn {name}(
-    extract::State(pool): extract::State<PgPool>,
-    Query(query_params): Query<{row_name}QueryParams>,
-) -> Result<Json<Value>, (StatusCode, String)> {{
-    // Call data function from data module 
-    // Other business logic can also be handled here 
-    let result = data_{self.func_name}(extract::State(pool), axum::extract::Query(query_params)).await;
-    result
-}}
-"###, name);
-            println!(code_string);
-            code_string
-        }
-    }
 
     // API layer function - calls data layer and can add business logic
     let api_func = format!(
