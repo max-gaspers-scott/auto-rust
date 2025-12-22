@@ -7,9 +7,6 @@ use std::{
 };
 
 use dotenv::dotenv;
-use reqwest::header::{ACCEPT, CONTENT_TYPE};
-use serde::{Deserialize, Serialize};
-use std::env;
 
 pub async fn gen_sql(
     project_dir: std::path::PathBuf,

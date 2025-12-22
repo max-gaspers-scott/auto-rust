@@ -25,10 +25,10 @@ use add_react::create_react_app;
 pub use base_structs::{Row, create_type_map};
 use boilerplate::{add_axum_end, add_top_boilerplate};
 use convert_case::{Case, Casing};
+use dotenv::dotenv;
 use gen_docker::gen_docker;
 use gen_examples::gen_examples;
 use gen_sql::gen_sql;
-use dotenv::dotenv;
 use gen_toml::gen_toml;
 pub use schema::{Col, extract_column_info, extract_table_names, extract_table_schemas};
 use serde::de::value::{self, Error};
@@ -134,7 +134,7 @@ async fn main() -> Result<(), std::io::Error> {
         println!("using default test string");
     }
 
-    match gen_sql::gen_sql(project_dir.clone(), file_name.clone(), sql_task).await {
+    match gen_sql::gen_sql(project_dir.clone(), sql_task).await {
         Ok(content) => {
             println!("Successfully generated SQL ({} bytes)", content.len());
         }
@@ -300,6 +300,20 @@ async fn main() -> Result<(), std::io::Error> {
             }
         }
     }
+    println!(
+        r###" 
+test with:
+
+curl -X POST http://localhost:8081/add_hosts -H "Content-Type: application/json" -d '{{
+"name": "test",
+"email": "test@qwe.com",
+"password_hash": "jkjdsfljkdsfjk",
+"zip_code": "124422"
+}}'
+
+curl http://localhost:8081/get_hosts
+"###
+    );
     Ok(())
 }
 
