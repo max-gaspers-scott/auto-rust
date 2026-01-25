@@ -133,7 +133,7 @@ async fn main() -> Result<(), std::io::Error> {
         println!("using default test string");
     }
 
-    match gen_sql::gen_sql(project_dir.clone(), file_name.clone()).await {
+    match gen_sql::gen_sql(project_dir.clone(), file_name.clone(), true).await {
         Ok(content) => {
             println!("Successfully generated SQL ({} bytes)", content.len());
         }
@@ -208,20 +208,25 @@ async fn main() -> Result<(), std::io::Error> {
         match check_res {
             Ok(status) if status.success() => {
                 println!("PostgreSQL is ready!");
-                
+
                 // Create the database
                 let create_db_res = Command::new("docker")
                     .args([
-                        "exec", "sql_gen_con", "psql", "-U", "postgres", "-c", 
-                        "CREATE DATABASE sql_gen_con;"
+                        "exec",
+                        "sql_gen_con",
+                        "psql",
+                        "-U",
+                        "postgres",
+                        "-c",
+                        "CREATE DATABASE sql_gen_con;",
                     ])
                     .status();
-                    
+
                 match create_db_res {
                     Ok(_) => println!("Database created successfully!"),
                     Err(e) => println!("Note: Database might already exist: {}", e),
                 }
-                
+
                 break;
             }
             _ => {
@@ -272,10 +277,22 @@ async fn main() -> Result<(), std::io::Error> {
             "--db-url",
             "postgres://postgres:secret@localhost:12345/sql_gen_con",
             "--output",
-            "src/models/",
+            "/src/models/",
         ])
         .status()?;
 
+    println!("gen sql res: {}", gen_sql_status);
+    let move_res = Command::new("mv")
+        .args([
+            "/src/models/",
+            &format!(
+                "../{}/src/models",
+                sql_path.file_name().unwrap().to_str().unwrap()
+            ),
+        ])
+        .status()?;
+
+    println!("the move: {}", move_res);
     // Additional wait and verification before sql-gen to ensure database is fully ready
     println!("Waiting for database to be fully ready...");
     let mut db_attempts = 0;

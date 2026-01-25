@@ -11,7 +11,63 @@ use std::env;
 pub async fn gen_sql(
     project_dir: std::path::PathBuf,
     sql_task: String,
+    is_test: bool,
 ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    let migrations_dir = project_dir.join("migrations");
+    // Create parent directories
+    println!("Creating directory: {}", migrations_dir.display());
+    fs::create_dir_all(&migrations_dir).map_err(|e| {
+        eprintln!("Error creating directory: {}", e);
+        e
+    })?;
+    let sql_path = migrations_dir.join("0001_data.sql");
+    println!("Creating SQL file at: {}", sql_path.display());
+
+    if is_test {
+        let mut file = File::create(&sql_path).map_err(|e| {
+            eprintln!("Error creating file: {}", e);
+            e
+        })?;
+        let sql_default = r#"
+CREATE TABLE IF NOT EXISTS users (
+    user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    username VARCHAR(255) UNIQUE NOT NULL,
+    email VARCHAR(255) UNIQUE,
+    display_name VARCHAR(255),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS conversations (
+    conversation_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255),
+    is_group_chat BOOL NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS conversation_participants (
+    participant_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    conversation_id UUID NOT NULL REFERENCES conversations(conversation_id),
+    user_id UUID NOT NULL REFERENCES users(user_id),
+    joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS messages (
+    message_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    conversation_id UUID NOT NULL REFERENCES conversations(conversation_id),
+    sender_id UUID NOT NULL REFERENCES users(user_id),
+    content TEXT NOT NULL,
+    sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    edited_at TIMESTAMPTZ
+);"#;
+
+        file.write_all(sql_default.as_bytes()).map_err(|e| {
+            eprintln!("Error writing to file: {}", e);
+            e
+        })?;
+
+        return Ok("success".to_string());
+    };
+
     dotenv().ok();
     let api_key_name = "GEMINI_API_KEY";
     let api_key: String = match env::var(api_key_name) {
@@ -178,19 +234,6 @@ pub async fn gen_sql(
     };
 
     println!("Generated SQL: {}", sql);
-
-    let migrations_dir = project_dir.join("migrations");
-    let sql_path = migrations_dir.join("0001_data.sql");
-
-    println!("Creating SQL file at: {}", sql_path.display());
-
-    // Create parent directories
-    println!("Creating directory: {}", migrations_dir.display());
-    fs::create_dir_all(&migrations_dir).map_err(|e| {
-        eprintln!("Error creating directory: {}", e);
-        e
-    })?;
-
     // Create and write to the file
     println!("Creating file: {}", sql_path.display());
     let mut file = File::create(&sql_path).map_err(|e| {
