@@ -282,13 +282,12 @@ async fn main() -> Result<(), std::io::Error> {
         .status()?;
 
     println!("gen sql res: {}", gen_sql_status);
+
+    let models_path = project_dir.join("src/");
     let move_res = Command::new("mv")
         .args([
             "/src/models/",
-            &format!(
-                "../{}/src/models",
-                sql_path.file_name().unwrap().to_str().unwrap()
-            ),
+            models_path.file_name().unwrap().to_str().unwrap(),
         ])
         .status()?;
 

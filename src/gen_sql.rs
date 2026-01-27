@@ -29,36 +29,19 @@ pub async fn gen_sql(
             e
         })?;
         let sql_default = r#"
-CREATE TABLE IF NOT EXISTS users (
-    user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    username VARCHAR(255) UNIQUE NOT NULL,
-    email VARCHAR(255) UNIQUE,
-    display_name VARCHAR(255),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+     CREATE TABLE IF NOT EXISTS users (
+         user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+         username VARCHAR(255) UNIQUE NOT NULL,
+         email VARCHAR(255) UNIQUE
+     );
 
-CREATE TABLE IF NOT EXISTS conversations (
-    conversation_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(255),
-    is_group_chat BOOL NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS conversation_participants (
-    participant_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    conversation_id UUID NOT NULL REFERENCES conversations(conversation_id),
-    user_id UUID NOT NULL REFERENCES users(user_id),
-    joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS messages (
-    message_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    conversation_id UUID NOT NULL REFERENCES conversations(conversation_id),
-    sender_id UUID NOT NULL REFERENCES users(user_id),
-    content TEXT NOT NULL,
-    sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    edited_at TIMESTAMPTZ
-);"#;
+     CREATE TABLE IF NOT EXISTS messages (
+         message_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+         sender_id UUID NOT NULL REFERENCES users(user_id),
+         recipiant_id UUID NOT NULL REFERENCES users(user_id),
+         content TEXT NOT NULL,
+         sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     );"#;
 
         file.write_all(sql_default.as_bytes()).map_err(|e| {
             eprintln!("Error writing to file: {}", e);
