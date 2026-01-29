@@ -1,8 +1,9 @@
-use dotenv::Error;
+use std::process::{Command, Output};
 
-use std::Command;
+use std::path;
 
-pub fn gen_sql_create() -> Result<(), Error> {
+pub fn gen_sql_crete(project_dir: &std::path::Path) -> Result<(), std::io::Error> {
+    let sql_path = project_dir.join("migrations/0001_data.sql");
     // Clean up any existing container with the same name
     let _ = Command::new("docker")
         .args(["rm", "-f", "sql_gen_con"])
@@ -20,9 +21,16 @@ pub fn gen_sql_create() -> Result<(), Error> {
             "-d",
             "postgres",
         ])
-        .status()?;
+        .status();
 
-    println!("postgres result: {}", postgres_res);
+    match postgres_res {
+        Ok(res) => {
+            println!("postgres result: {}", res);
+        }
+        Err(e) => {
+            println!("postgres result: {}", e);
+        }
+    }
 
     // Wait for PostgreSQL to be ready
     println!("Waiting for PostgreSQL to start...");
