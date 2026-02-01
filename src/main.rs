@@ -13,14 +13,17 @@ mod gen_examples;
 mod gen_sql;
 mod gen_toml;
 // mod llm;
+mod add_one_sql_funk;
 mod gen_sql_crate;
 mod schema;
 mod sql_funcs;
 
-use crate::gen_sql_crate::gen_sql_crete;
+mod setup;
+use crate::gen_sql_crate::gen_sql_crate;
 use add_compose::add_compose;
 use add_fastapi::add_fastapi;
 use add_minio::add_minio;
+use add_one_sql_funk::add_one_sql_funk;
 use add_python::add_python_func;
 use add_react::create_react_app;
 pub use base_structs::{Row, create_type_map};
@@ -95,33 +98,17 @@ async fn main() -> Result<(), std::io::Error> {
     println!("Project directory: {}", project_dir.display());
     println!("Parent directory: {}", parent_dir.display());
 
-    // Create new cargo project
-    let output = Command::new("cargo")
-        .current_dir(&parent_dir)
-        .arg("new")
-        .arg(&file_name)
-        .output()?;
+    let setup_res = setup::setup(&parent_dir, &file_name);
 
-    if !output.status.success() {
-        eprintln!(
-            "Failed to create new project: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!(
-                "Failed to create new project: {}",
-                String::from_utf8_lossy(&output.stderr)
-            ),
-        ));
+    match setup_res {
+        Ok(_) => {
+            println!("setup_res successful");
+        }
+        Err(e) => {
+            println!("setup_res error: {}", e);
+        }
     }
-
-    let gen_toml_res = gen_toml::gen_toml(&project_dir).await;
-    match gen_toml_res {
-        Ok(_) => println!("Successfully generated TOML"),
-        Err(e) => eprintln!("Failed to generate TOML: {}", e),
-    };
-
+    add_one_sql_funk();
     // Generate SQL and create necessary files
     let mut sql_task = String::new();
     println!(
@@ -175,142 +162,27 @@ async fn main() -> Result<(), std::io::Error> {
         }
     };
 
-    let crate_res = gen_sql_crete(&project_dir);
-
-    match crate_res {
-        Ok(res) => {
-            println!("crate_res worked");
-        }
-        Err(e) => {
-            println!("could not use the sql gen great: {}", e);
-        }
-    }
-
+    // let crate_res = gen_sql_crate(&project_dir);
+    //
+    // match crate_res {
+    //     Ok(res) => {
+    //         println!("crate_res worked");
+    //     }
+    //     Err(e) => {
+    //         println!("could not use the sql gen great: {}", e);
+    //     }
+    // }
+    //
     let path = project_dir.join("src/main.rs");
+    add_python_func(&path);
     let mut func_names = Vec::new();
-    add_top_boilerplate(&path)?;
 
     // TODO: rename, this creates select all, select one, and add functions.
     add_basic_sql_funcs(rows, &path, &mut func_names)?;
     println!("function names after basic sql are {:?}", func_names);
-    add_python_func(&path)?;
+    // add_python_func(&path)?;
+    // add_axum_end(func_names.clone(), &path)?;
 
-    // TODO: this looks like a dublicat of the add_minio function
-    // add_object(&path);
-    add_axum_end(func_names.clone(), &path)?;
-    let docker_res = gen_docker(
-        project_dir
-            .file_name()
-            .expect("Failed to get file name")
-            .to_str()
-            .unwrap(),
-    );
-    match docker_res {
-        Ok(_) => println!(
-            "Dockerfile created at {}",
-            project_dir.to_str().unwrap().to_owned()
-        ),
-        Err(e) => eprintln!("Error creating Dockerfile: {}", e),
-    }
-    println!("function names after axum end are {:?}", func_names);
-    let compose = add_compose(
-        project_dir
-            .file_name()
-            .expect("Failed to get file name")
-            .to_str()
-            .unwrap(),
-    );
-    match compose {
-        Ok(_) => println!(
-            "Docker compose created at {}",
-            project_dir.to_str().unwrap().to_owned()
-        ),
-        Err(e) => eprintln!("Error creating Docker compose: {}", e),
-    }
-    let minio = add_minio(&project_dir.join("src/main.rs"));
-    match minio {
-        Ok(_) => println!(
-            "Minio added at {}",
-            project_dir.to_str().unwrap().to_owned()
-        ),
-        Err(e) => eprintln!("Error adding Minio: {}", e),
-    }
-
-    let _ = create_react_app(
-        "../".to_owned()
-            + project_dir
-                .file_name()
-                .expect("Failed to get file name")
-                .to_str()
-                .unwrap(),
-    );
-
-    let gen_examples_res = gen_examples(
-        &project_dir
-            .file_name()
-            .expect("Failed to get file name")
-            .to_str()
-            .unwrap(),
-        func_names.clone(),
-    );
-    println!("function names after gen examples are {:?}", func_names);
-    match gen_examples_res {
-        Ok(_) => println!(
-            "Examples generated at {}",
-            project_dir.to_str().unwrap().to_owned()
-        ),
-        Err(e) => eprintln!("Error generating examples: {}", e),
-    }
-
-    let port_num = 8081;
-
-    let fastapi_res = add_fastapi(
-        &project_dir
-            .file_name()
-            .expect("faild to get the file name for fast api func")
-            .to_str()
-            .unwrap(),
-    );
-
-    match fastapi_res {
-        Ok(_) => println!("added the fastapi folder "),
-        Err(e) => eprintln!("error while adding the fastapi folder: {}", e),
-    }
-
-    let addr: SocketAddr = "0.0.0.0:8081".parse().unwrap();
-    match TcpListener::bind(&addr) {
-        // If the bind operation is successful, it means the port was available.
-        Ok(listener) => {
-            println!("✅ Port 8081 is NOT in use.");
-            // It's important to explicitly drop the listener to free up the port immediately.
-            // This allows the program to exit cleanly.
-            drop(listener);
-        }
-        // If the bind operation fails, an error is returned.
-        // We can inspect the error kind to determine if the port is already in use.
-        Err(e) => {
-            // A common error is `AddrInUse`, which indicates the port is already taken.
-            if e.kind() == std::io::ErrorKind::AddrInUse {
-                println!("❌ Port {port_num} is already in uses!!!!!!!!!!!!!!");
-                println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-                println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-                println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-                println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-                println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-                println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-            } else {
-                // Handle other potential errors, such as permissions issues.
-                eprintln!("An unexpected error occurred: {}", e);
-                println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-                println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-                println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-                println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-                println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-                println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-                println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-            }
-        }
-    }
     Ok(())
 }
 
