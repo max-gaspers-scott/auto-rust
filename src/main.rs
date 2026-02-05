@@ -1,4 +1,5 @@
 mod add_compose;
+use clap::Parser;
 mod add_fastapi;
 mod add_functions;
 mod add_minio;
@@ -76,6 +77,16 @@ fn create_rows_from_sql(file_path: &std::path::Path) -> Result<Vec<Row>, io::Err
 
     Ok(rows)
 }
+enum MakeOptions {
+    Setup,
+    Sql,
+}
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    #[arg(short, long)]
+    what_to_make: String,
+}
 
 // todo: kick off postgress
 // https://users.rust-lang.org/t/how-to-execute-a-root-command-on-linux/50066/7
@@ -97,71 +108,93 @@ async fn main() -> Result<(), std::io::Error> {
     let project_dir = parent_dir.join(&file_name);
     println!("Project directory: {}", project_dir.display());
     println!("Parent directory: {}", parent_dir.display());
+    let args = Args::parse();
 
-    let setup_res = setup::setup(&parent_dir, &file_name);
-
-    match setup_res {
-        Ok(_) => {
-            println!("setup_res successful");
+    //TOOO: sql branch has way to muhc respncibiltiy
+    match args.what_to_make {
+        val if val == "setup".to_string() => {
+            let setup_res = setup::setup(&parent_dir, &file_name);
+            match setup_res {
+                Ok(_) => {
+                    println!("setup_res successful");
+                }
+                Err(e) => {
+                    println!("setup_res error: {}", e);
+                }
+            }
         }
-        Err(e) => {
-            println!("setup_res error: {}", e);
-        }
-    }
-    add_one_sql_funk();
-    // Generate SQL and create necessary files
-    let mut sql_task = String::new();
-    println!(
-        "Enter the specific task for the SQL database (e.g., 'make SQL to store users and their favored food'): "
-    );
-    io::stdin().read_line(&mut sql_task)?;
-    let mut sql_task = sql_task.trim().to_string();
-    if sql_task == "" {
-        sql_task = "make a database to track infomation about hosts and renters for an airBnB like aplication. there are hosts that have a zip code, name, email, and password hash. there are also renters that have all the same colums expet the zip code.".to_string();
-        println!("using default test string");
-    }
-
-    match gen_sql::gen_sql(project_dir.clone(), file_name.clone(), true).await {
-        Ok(content) => {
-            println!("Successfully generated SQL ({} bytes)", content.len());
-        }
-        Err(e) => {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Failed to generate SQL: {}", e),
-            ));
-        }
-    }
-
-    // Process the generated SQL file
-    let sql_path = project_dir.join("migrations/0001_data.sql");
-    println!("Attempting to read SQL file from: {}", sql_path.display());
-
-    // Verify file exists
-    if !std::path::Path::new(&sql_path).exists() {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            format!("SQL file does not exist at: {}", sql_path.display()),
-        ));
-    }
-
-    let r = create_rows_from_sql(&sql_path);
-    let rows = match r {
-        Ok(rows) => {
+        // why???
+        val if val == "sql".to_string() => {
+            let sql_path = project_dir.join("migrations/0001_data.sql");
+            let mut sql_task = String::new();
             println!(
-                "Successfully parsed {} table definitions from SQL",
-                rows.len()
+                "Enter the specific task for the SQL database (e.g., 'make SQL to store users and their favored food'): "
             );
-            rows
-        }
-        Err(e) => {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("Error parsing SQL file at {}: {}", sql_path.display(), e),
-            ));
-        }
-    };
+            io::stdin().read_line(&mut sql_task)?;
+            let mut sql_task = sql_task.trim().to_string();
+            if sql_task == "" {
+                sql_task = "make a database to track infomation about hosts and renters for an airBnB like aplication. there are hosts that have a zip code, name, email, and password hash. there are also renters that have all the same colums expet the zip code.".to_string();
+                println!("using default test string");
+            }
 
+            // Generate SQL and create necessary files
+            match gen_sql::gen_sql(project_dir.clone(), file_name.clone(), true).await {
+                Ok(content) => {
+                    println!("Successfully generated SQL ({} bytes)", content.len());
+                }
+                Err(e) => {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        format!("Failed to generate SQL: {}", e),
+                    ));
+                }
+            }
+
+            // Process the generated SQL file
+            println!("Attempting to read SQL file from: {}", sql_path.display());
+
+            // Verify file exists
+            if !std::path::Path::new(&sql_path).exists() {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    format!("SQL file does not exist at: {}", sql_path.display()),
+                ));
+            }
+            let r = create_rows_from_sql(&sql_path);
+            let rows = match r {
+                Ok(rows) => {
+                    println!(
+                        "Successfully parsed {} table definitions from SQL",
+                        rows.len()
+                    );
+                    rows
+                }
+                Err(e) => {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        format!("Error parsing SQL file at {}: {}", sql_path.display(), e),
+                    ));
+                }
+            };
+            // let mut func_names = Vec::new();
+
+            // TODO: rename, this creates select all, select one, and add functions.
+            let path = project_dir.join("src/main.rs");
+            // add_basic_sql_funcs(rows, &path, &mut func_names)?;
+            // println!("function names after basic sql are {:?}", func_names);
+        }
+        var if var == "python" => {
+            let path = project_dir.join("src/main.rs");
+            add_python_func(&path);
+        }
+        var if var == "one_sql" => {
+            add_one_sql_funk();
+        }
+        var if var == "sql_crate" => {
+            let crate_res = gen_sql_crate(&project_dir);
+        }
+        _ => println!("thats not a valid option"),
+    }
     // let crate_res = gen_sql_crate(&project_dir);
     //
     // match crate_res {
@@ -173,13 +206,6 @@ async fn main() -> Result<(), std::io::Error> {
     //     }
     // }
     //
-    let path = project_dir.join("src/main.rs");
-    add_python_func(&path);
-    let mut func_names = Vec::new();
-
-    // TODO: rename, this creates select all, select one, and add functions.
-    add_basic_sql_funcs(rows, &path, &mut func_names)?;
-    println!("function names after basic sql are {:?}", func_names);
     // add_python_func(&path)?;
     // add_axum_end(func_names.clone(), &path)?;
 
