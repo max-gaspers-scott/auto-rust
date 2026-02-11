@@ -1,4 +1,5 @@
 mod add_compose;
+use clap::Parser;
 mod add_fastapi;
 mod add_functions;
 mod add_minio;
@@ -13,14 +14,17 @@ mod gen_examples;
 mod gen_sql;
 mod gen_toml;
 // mod llm;
+mod add_one_sql_funk;
 mod gen_sql_crate;
 mod schema;
 mod sql_funcs;
 
-use crate::gen_sql_crate::gen_sql_crete;
+mod setup;
+use crate::gen_sql_crate::gen_sql_crate;
 use add_compose::add_compose;
 use add_fastapi::add_fastapi;
 use add_minio::add_minio;
+use add_one_sql_funk::add_one_sql_funk;
 use add_python::add_python_func;
 use add_react::create_react_app;
 pub use base_structs::{Row, create_type_map};
@@ -73,6 +77,16 @@ fn create_rows_from_sql(file_path: &std::path::Path) -> Result<Vec<Row>, io::Err
 
     Ok(rows)
 }
+enum MakeOptions {
+    Setup,
+    Sql,
+}
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    #[arg(short, long)]
+    what_to_make: String,
+}
 
 // todo: kick off postgress
 // https://users.rust-lang.org/t/how-to-execute-a-root-command-on-linux/50066/7
@@ -94,223 +108,107 @@ async fn main() -> Result<(), std::io::Error> {
     let project_dir = parent_dir.join(&file_name);
     println!("Project directory: {}", project_dir.display());
     println!("Parent directory: {}", parent_dir.display());
+    let args = Args::parse();
 
-    // Create new cargo project
-    let output = Command::new("cargo")
-        .current_dir(&parent_dir)
-        .arg("new")
-        .arg(&file_name)
-        .output()?;
-
-    if !output.status.success() {
-        eprintln!(
-            "Failed to create new project: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!(
-                "Failed to create new project: {}",
-                String::from_utf8_lossy(&output.stderr)
-            ),
-        ));
-    }
-
-    let gen_toml_res = gen_toml::gen_toml(&project_dir).await;
-    match gen_toml_res {
-        Ok(_) => println!("Successfully generated TOML"),
-        Err(e) => eprintln!("Failed to generate TOML: {}", e),
-    };
-
-    // Generate SQL and create necessary files
-    let mut sql_task = String::new();
-    println!(
-        "Enter the specific task for the SQL database (e.g., 'make SQL to store users and their favored food'): "
-    );
-    io::stdin().read_line(&mut sql_task)?;
-    let mut sql_task = sql_task.trim().to_string();
-    if sql_task == "" {
-        sql_task = "make a database to track infomation about hosts and renters for an airBnB like aplication. there are hosts that have a zip code, name, email, and password hash. there are also renters that have all the same colums expet the zip code.".to_string();
-        println!("using default test string");
-    }
-
-    match gen_sql::gen_sql(project_dir.clone(), file_name.clone(), true).await {
-        Ok(content) => {
-            println!("Successfully generated SQL ({} bytes)", content.len());
-        }
-        Err(e) => {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Failed to generate SQL: {}", e),
-            ));
-        }
-    }
-
-    // Process the generated SQL file
-    let sql_path = project_dir.join("migrations/0001_data.sql");
-    println!("Attempting to read SQL file from: {}", sql_path.display());
-
-    // Verify file exists
-    if !std::path::Path::new(&sql_path).exists() {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            format!("SQL file does not exist at: {}", sql_path.display()),
-        ));
-    }
-
-    let r = create_rows_from_sql(&sql_path);
-    let rows = match r {
-        Ok(rows) => {
-            println!(
-                "Successfully parsed {} table definitions from SQL",
-                rows.len()
-            );
-            rows
-        }
-        Err(e) => {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("Error parsing SQL file at {}: {}", sql_path.display(), e),
-            ));
-        }
-    };
-
-    let crate_res = gen_sql_crete(&project_dir);
-
-    match crate_res {
-        Ok(res) => {
-            println!("crate_res worked");
-        }
-        Err(e) => {
-            println!("could not use the sql gen great: {}", e);
-        }
-    }
-
-    let path = project_dir.join("src/main.rs");
-    let mut func_names = Vec::new();
-    add_top_boilerplate(&path)?;
-
-    // TODO: rename, this creates select all, select one, and add functions.
-    add_basic_sql_funcs(rows, &path, &mut func_names)?;
-    println!("function names after basic sql are {:?}", func_names);
-    add_python_func(&path)?;
-
-    // TODO: this looks like a dublicat of the add_minio function
-    // add_object(&path);
-    add_axum_end(func_names.clone(), &path)?;
-    let docker_res = gen_docker(
-        project_dir
-            .file_name()
-            .expect("Failed to get file name")
-            .to_str()
-            .unwrap(),
-    );
-    match docker_res {
-        Ok(_) => println!(
-            "Dockerfile created at {}",
-            project_dir.to_str().unwrap().to_owned()
-        ),
-        Err(e) => eprintln!("Error creating Dockerfile: {}", e),
-    }
-    println!("function names after axum end are {:?}", func_names);
-    let compose = add_compose(
-        project_dir
-            .file_name()
-            .expect("Failed to get file name")
-            .to_str()
-            .unwrap(),
-    );
-    match compose {
-        Ok(_) => println!(
-            "Docker compose created at {}",
-            project_dir.to_str().unwrap().to_owned()
-        ),
-        Err(e) => eprintln!("Error creating Docker compose: {}", e),
-    }
-    let minio = add_minio(&project_dir.join("src/main.rs"));
-    match minio {
-        Ok(_) => println!(
-            "Minio added at {}",
-            project_dir.to_str().unwrap().to_owned()
-        ),
-        Err(e) => eprintln!("Error adding Minio: {}", e),
-    }
-
-    let _ = create_react_app(
-        "../".to_owned()
-            + project_dir
-                .file_name()
-                .expect("Failed to get file name")
-                .to_str()
-                .unwrap(),
-    );
-
-    let gen_examples_res = gen_examples(
-        &project_dir
-            .file_name()
-            .expect("Failed to get file name")
-            .to_str()
-            .unwrap(),
-        func_names.clone(),
-    );
-    println!("function names after gen examples are {:?}", func_names);
-    match gen_examples_res {
-        Ok(_) => println!(
-            "Examples generated at {}",
-            project_dir.to_str().unwrap().to_owned()
-        ),
-        Err(e) => eprintln!("Error generating examples: {}", e),
-    }
-
-    let port_num = 8081;
-
-    let fastapi_res = add_fastapi(
-        &project_dir
-            .file_name()
-            .expect("faild to get the file name for fast api func")
-            .to_str()
-            .unwrap(),
-    );
-
-    match fastapi_res {
-        Ok(_) => println!("added the fastapi folder "),
-        Err(e) => eprintln!("error while adding the fastapi folder: {}", e),
-    }
-
-    let addr: SocketAddr = "0.0.0.0:8081".parse().unwrap();
-    match TcpListener::bind(&addr) {
-        // If the bind operation is successful, it means the port was available.
-        Ok(listener) => {
-            println!("✅ Port 8081 is NOT in use.");
-            // It's important to explicitly drop the listener to free up the port immediately.
-            // This allows the program to exit cleanly.
-            drop(listener);
-        }
-        // If the bind operation fails, an error is returned.
-        // We can inspect the error kind to determine if the port is already in use.
-        Err(e) => {
-            // A common error is `AddrInUse`, which indicates the port is already taken.
-            if e.kind() == std::io::ErrorKind::AddrInUse {
-                println!("❌ Port {port_num} is already in uses!!!!!!!!!!!!!!");
-                println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-                println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-                println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-                println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-                println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-                println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-            } else {
-                // Handle other potential errors, such as permissions issues.
-                eprintln!("An unexpected error occurred: {}", e);
-                println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-                println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-                println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-                println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-                println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-                println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-                println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+    //TOOO: sql branch has way to muhc respncibiltiy
+    match args.what_to_make {
+        val if val == "setup".to_string() => {
+            let setup_res = setup::setup(&parent_dir, &file_name);
+            match setup_res {
+                Ok(_) => {
+                    println!("setup_res successful");
+                }
+                Err(e) => {
+                    println!("setup_res error: {}", e);
+                }
             }
         }
+        // why???
+        val if val == "sql".to_string() => {
+            let sql_path = project_dir.join("migrations/0001_data.sql");
+            let mut sql_task = String::new();
+            println!(
+                "Enter the specific task for the SQL database (e.g., 'make SQL to store users and their favored food'): "
+            );
+            io::stdin().read_line(&mut sql_task)?;
+            let mut sql_task = sql_task.trim().to_string();
+            if sql_task == "" {
+                sql_task = "make a database to track infomation about hosts and renters for an airBnB like aplication. there are hosts that have a zip code, name, email, and password hash. there are also renters that have all the same colums expet the zip code.".to_string();
+                println!("using default test string");
+            }
+
+            // Generate SQL and create necessary files
+            match gen_sql::gen_sql(project_dir.clone(), file_name.clone(), true).await {
+                Ok(content) => {
+                    println!("Successfully generated SQL ({} bytes)", content.len());
+                }
+                Err(e) => {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        format!("Failed to generate SQL: {}", e),
+                    ));
+                }
+            }
+
+            // Process the generated SQL file
+            println!("Attempting to read SQL file from: {}", sql_path.display());
+
+            // Verify file exists
+            if !std::path::Path::new(&sql_path).exists() {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    format!("SQL file does not exist at: {}", sql_path.display()),
+                ));
+            }
+            let r = create_rows_from_sql(&sql_path);
+            let rows = match r {
+                Ok(rows) => {
+                    println!(
+                        "Successfully parsed {} table definitions from SQL",
+                        rows.len()
+                    );
+                    rows
+                }
+                Err(e) => {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        format!("Error parsing SQL file at {}: {}", sql_path.display(), e),
+                    ));
+                }
+            };
+            // let mut func_names = Vec::new();
+
+            // TODO: rename, this creates select all, select one, and add functions.
+            let path = project_dir.join("src/main.rs");
+            // add_basic_sql_funcs(rows, &path, &mut func_names)?;
+            // println!("function names after basic sql are {:?}", func_names);
+        }
+        var if var == "python" => {
+            let path = project_dir.join("src/main.rs");
+            add_python_func(&path);
+        }
+        var if var == "one_sql" => {
+            add_one_sql_funk();
+        }
+        var if var == "sql_crate" => {
+            let crate_res = gen_sql_crate(&project_dir);
+        }
+        _ => println!("thats not a valid option"),
     }
+    // let crate_res = gen_sql_crate(&project_dir);
+    //
+    // match crate_res {
+    //     Ok(res) => {
+    //         println!("crate_res worked");
+    //     }
+    //     Err(e) => {
+    //         println!("could not use the sql gen great: {}", e);
+    //     }
+    // }
+    //
+    // add_python_func(&path)?;
+    // add_axum_end(func_names.clone(), &path)?;
+
     Ok(())
 }
 

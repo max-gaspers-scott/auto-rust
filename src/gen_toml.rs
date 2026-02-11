@@ -17,7 +17,7 @@ use std::{
 ///
 /// Returns a `Result` containing the generated TOML content as a string,
 /// or an error if the operation fails.
-pub async fn gen_toml(
+pub fn gen_toml(
     project_dir: &std::path::PathBuf,
 ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
     let deps = "

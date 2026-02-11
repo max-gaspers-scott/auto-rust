@@ -89,7 +89,6 @@ async fn upload_video(
 
     // Open file with proper error handling
     let file = OpenOptions::new()
-        .write(true)
         .create(true)
         .append(true)
         .open(file_path)
@@ -99,7 +98,7 @@ async fn upload_video(
         })?;
 
     let mut file = BufWriter::new(file);
-    file.write(funk_str.as_bytes())?;
+    file.write_all(funk_str.as_bytes())?;
 
     Ok("upload_video".to_string())
 }
