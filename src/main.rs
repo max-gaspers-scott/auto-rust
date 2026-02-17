@@ -24,7 +24,7 @@ use crate::gen_sql_crate::gen_sql_crate;
 use add_compose::add_compose;
 use add_fastapi::add_fastapi;
 use add_minio::add_minio;
-use add_one_sql_funk::add_one_sql_funk;
+use add_one_sql_funk::{add_one_post, add_one_sql_funk};
 use add_python::add_python_func;
 use add_react::create_react_app;
 pub use base_structs::{Row, create_type_map};
@@ -189,6 +189,10 @@ async fn main() -> Result<(), std::io::Error> {
         }
         var if var == "one_sql" => {
             add_one_sql_funk();
+        }
+        var if var == "post" => {
+            println!("about to run post func");
+            add_one_post();
         }
         var if var == "sql_crate" => {
             let crate_res = gen_sql_crate(&project_dir);
