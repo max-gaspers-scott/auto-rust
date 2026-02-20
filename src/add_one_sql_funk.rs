@@ -1,6 +1,7 @@
 use convert_case::{Case, Casing};
 use io::{BufWriter, Write};
 use std::io::prelude::*;
+use std::path::PathBuf;
 
 use std::fs::OpenOptions;
 use std::path::{self, Path};
@@ -124,7 +125,6 @@ async fn get_{retern_underscors}_{match_col}(
 }
 
 pub fn add_one_post() -> Result<(), std::io::Error> {
-    println!("running the post funciton");
     // get file name as input
     let mut sql_struct = String::new();
     println!("what table do you want to use"); // should give user list to pick from
@@ -137,21 +137,19 @@ pub fn add_one_post() -> Result<(), std::io::Error> {
     let sql_bytes = fs::read(file_path).expect("that was not a valid file / sql struct");
     let sql = String::from_utf8(sql_bytes).expect("file contains invalid UTF-8");
 
-    // split on lines and get third row (index 2)
-    let mut lines: Vec<&str> = sql.lines().collect();
-    let mut struct_type = if lines.len() > 2 {
-        let third_row = lines[2];
-        let words: Vec<&str> = third_row.split_whitespace().collect();
-        if words.len() > 1 {
-            words[1] // second word (index 1)
-        } else {
-            "no second word"
-        }
-    } else {
-        "no third row"
-    }
-    .to_string();
-    struct_type.pop();
+    let all_lines: Vec<&str> = sql.lines().collect();
+    let len = all_lines.len();
+    let lines = &all_lines[2..len - 2];
+    let fields: Vec<String> = lines
+        .iter()
+        .map(|line| {
+            let words: Vec<&str> = line.split_whitespace().collect();
+            let mut word = words[1].to_string();
+            word.pop();
+            word
+        })
+        .collect();
+
     let sql_struct_captial = sql_struct.to_case(Case::Pascal);
     let mut instert_fields = String::new();
     // add every field in struct
@@ -159,6 +157,11 @@ pub fn add_one_post() -> Result<(), std::io::Error> {
     // change from hard coding
     instert_fields.push_str("username");
     instert_fields.push_str(", email");
+
+    let mut bind_statment = String::new();
+    for feild in fields {
+        bind_statment.push_str(&format!("\n.bind(payload.{})", feild));
+    }
 
     let data_func = format!(
         r###"
@@ -172,9 +175,7 @@ pub async fn post_{sql_struct}(
     let query = "INSERT INTO {sql_struct}s ({instert_fields}) VALUES ($1, $2) RETURNING *";
 
 //// what is bound is wrong
-    let q = sqlx::query_as::<_, {sql_struct_captial}>(&query)
-    .bind({sql_struct_captial}.username)
-    .bind({sql_struct_captial}.email);
+    let q = sqlx::query_as::<_, {sql_struct_captial}>(&query){bind_statment};
 
     let result = q.fetch_one(&pool).await;
 
@@ -202,5 +203,22 @@ pub async fn post_{sql_struct}(
             e
         ),
     };
+    prepend_line_to_file(file_path.clone(), "mod models;");
+
+    prepend_line_to_file(
+        file_path,
+        &format!("use crate::models::{};", sql_struct_captial),
+    );
+
+    Ok(())
+}
+
+fn prepend_line_to_file(path: PathBuf, line_to_add: &str) -> Result<(), std::io::Error> {
+    let original_content = fs::read_to_string(path.clone())?;
+
+    let new_content = format!("{}\n{}", line_to_add, original_content);
+
+    fs::write(path, new_content)?;
+
     Ok(())
 }
