@@ -1,6 +1,6 @@
 mod add_compose;
-use clap::Parser;
 mod add_fastapi;
+use clap::Parser;
 mod add_functions;
 mod add_minio;
 mod add_object;
@@ -137,8 +137,20 @@ async fn main() -> Result<(), std::io::Error> {
                 println!("using default test string");
             }
 
+            let mut is_test = String::new();
+            println!("is this a test: y/n");
+            let test: bool = loop {
+                io::stdin().read_line(&mut is_test)?;
+                let mut trimmed = is_test.trim();
+                match trimmed {
+                    "y" => break true,
+                    "n" => break false,
+                    _ => println!("use only y or n"),
+                }
+            };
+
             // Generate SQL and create necessary files
-            match gen_sql::gen_sql(project_dir.clone(), file_name.clone(), true).await {
+            match gen_sql::gen_sql(project_dir.clone(), file_name.clone(), test).await {
                 Ok(content) => {
                     println!("Successfully generated SQL ({} bytes)", content.len());
                 }

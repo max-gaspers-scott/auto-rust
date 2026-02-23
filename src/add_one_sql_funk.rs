@@ -1,5 +1,6 @@
 use convert_case::{Case, Casing};
 use io::{BufWriter, Write};
+use serde_urlencoded::to_string;
 use std::io::prelude::*;
 use std::path::PathBuf;
 
@@ -140,7 +141,7 @@ pub fn add_one_post() -> Result<(), std::io::Error> {
     let all_lines: Vec<&str> = sql.lines().collect();
     let len = all_lines.len();
     let lines = &all_lines[2..len - 2];
-    let fields: Vec<String> = lines
+    let og_fields: Vec<String> = lines
         .iter()
         .map(|line| {
             let words: Vec<&str> = line.split_whitespace().collect();
@@ -149,19 +150,30 @@ pub fn add_one_post() -> Result<(), std::io::Error> {
             word
         })
         .collect();
+    let fields = &og_fields[1..];
 
     let sql_struct_captial = sql_struct.to_case(Case::Pascal);
     let mut instert_fields = String::new();
     // add every field in struct
 
     // change from hard coding
-    instert_fields.push_str("username");
-    instert_fields.push_str(", email");
+    for field in fields.clone() {
+        instert_fields.push_str(&format!("{field}, "));
+    }
+    instert_fields.pop();
+    instert_fields.pop();
 
     let mut bind_statment = String::new();
     for feild in fields {
         bind_statment.push_str(&format!("\n.bind(payload.{})", feild));
     }
+
+    let mut doller_numbers = String::new();
+    for i in 1..=fields.len() {
+        doller_numbers.push_str(&format!("${i}, "));
+    }
+    doller_numbers.pop();
+    doller_numbers.pop();
 
     let data_func = format!(
         r###"
@@ -172,7 +184,7 @@ pub async fn post_{sql_struct}(
     Json(payload): Json<{sql_struct_captial}>,
 ) -> Json<Value> {{
 // change hardcoded number of values
-    let query = "INSERT INTO {sql_struct}s ({instert_fields}) VALUES ($1, $2) RETURNING *";
+    let query = "INSERT INTO {sql_struct}s ({instert_fields}) VALUES ({doller_numbers}) RETURNING *";
 
 //// what is bound is wrong
     let q = sqlx::query_as::<_, {sql_struct_captial}>(&query){bind_statment};
