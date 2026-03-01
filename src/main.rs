@@ -209,6 +209,17 @@ async fn main() -> Result<(), std::io::Error> {
         var if var == "sql_crate" => {
             let crate_res = gen_sql_crate(&project_dir);
         }
+
+        var if var == "minio_video" => {
+            let minio = add_minio(&project_dir.join("src/main.rs"));
+            match minio {
+                Ok(_) => println!(
+                    "Minio added at {}",
+                    &project_dir.to_str().unwrap().to_owned()
+                ),
+                Err(e) => eprintln!("Error adding Minio: {}", e),
+            }
+        }
         _ => println!("thats not a valid option"),
     }
     // let crate_res = gen_sql_crate(&project_dir);

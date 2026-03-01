@@ -168,6 +168,22 @@ pub fn gen_sql_crate(project_dir: &std::path::Path) -> Result<(), std::io::Error
         ])
         .status()?;
 
+    let file_path = std::env::current_dir()?.join("src/main.rs");
+
+    let mut file = OpenOptions::new().append(true).open(file_path.clone())?;
+    // let mut file = BufWriter::new(file);
+
+    let write_res = write!(&mut file, "{}", "hello");
+
+    match write_res {
+        Ok(_) => {}
+        Err(e) => println!(
+            "an error writeing to {}: {}",
+            file_path.clone().display(),
+            e
+        ),
+    };
+
     println!("status of generation sql: {}", gen_sql_status);
 
     println!("res of copy to docker: {}", copy_res);
