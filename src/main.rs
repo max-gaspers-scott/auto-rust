@@ -1,5 +1,6 @@
 mod add_compose;
 use clap::Parser;
+use file_ops::add;
 mod add_fastapi;
 mod add_functions;
 mod add_minio;
@@ -93,6 +94,9 @@ struct Args {
 // docker run --name some-postgres -e POSTGRES_USER=dbuser -e POSTGRES_PASSWORD=p -e POSTGRES_DB=work -p 1111:5432 -d postgres
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
+    let res_a = add(2, 3);
+    println!("res: {}", res_a);
+
     let mut file_name = String::new();
     println!("Enter project name: ");
     io::stdin().read_line(&mut file_name)?;

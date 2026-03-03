@@ -3,6 +3,7 @@ name = "auto-rust"
 version = "0.1.0"
 edition = "2024"
 
+
 [dependencies]
 bigdecimal = "0.4.8"
 convert_case = "0.8.0"
@@ -22,5 +23,9 @@ serde_urlencoded = "0.7.1"
 dotenv = "0.15.0"
 socketioxide = "0.18.1"
 clap = { version = "4.5.56", features = ["derive"] }
+file_ops = { path = "./file_ops" }
 
 [build-dependencies]
+
+[workspace]
+members = ["file_ops"]

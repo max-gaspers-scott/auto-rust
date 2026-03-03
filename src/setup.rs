@@ -81,15 +81,6 @@ pub fn setup(parent_dir: &Path, file_name: &str) -> Result<(), std::io::Error> {
         Err(e) => eprintln!("Error creating Docker compose: {}", e),
     }
 
-    let minio = add_minio(&project_dir.join("src/main.rs"));
-    match minio {
-        Ok(_) => println!(
-            "Minio added at {}",
-            project_dir.to_str().unwrap().to_owned()
-        ),
-        Err(e) => eprintln!("Error adding Minio: {}", e),
-    }
-
     let _ = create_react_app(
         "../".to_owned()
             + project_dir
