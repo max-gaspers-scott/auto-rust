@@ -18,13 +18,13 @@ mod setup;
 use crate::gen_sql_crate::gen_sql_crate;
 use add_compose::add_compose;
 use add_minio::add_minio;
-use add_one_sql_funk::add_one_sql_funk;
+use add_one_sql_funk::{add_one_post, add_one_sql_funk};
 use add_python::add_python_func;
 use add_react::create_react_app;
 // pub use base_structs::{Row, create_type_map};
 use boilerplate::{add_axum_end, add_top_boilerplate};
 use gen_sql::gen_sql;
-use std::io;
+use std::{fs::write, io};
 
 // This function is now in base_structs.rs
 
@@ -101,6 +101,10 @@ async fn main() -> Result<(), std::io::Error> {
         var if var == "sql_crate" => match gen_sql_crate(&project_dir) {
             Ok(_) => (),
             Err(e) => print!("gen sql error : {e}"),
+        },
+        var if var == "post" => match add_one_post() {
+            Ok(_) => (),
+            Err(e) => println!("post error: {e}"),
         },
         var if var == "minio" => {
             let path = project_dir.join("src/main.rs");
