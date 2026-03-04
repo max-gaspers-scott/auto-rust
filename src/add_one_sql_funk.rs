@@ -1,11 +1,8 @@
-use io::{BufWriter, Write};
-use std::io::prelude::*;
+use io::Write;
 
 use std::fs::OpenOptions;
-use std::path::{self, Path};
-use std::{fmt::format, fs, io};
+use std::{fs, io};
 pub fn add_one_sql_funk() -> Result<(), std::io::Error> {
-    // get file name as input
     let mut sql_struct = String::new();
     println!("what table do you want to use"); // should give user list to pick from
     io::stdin()

@@ -1,24 +1,7 @@
-use std::{
-    fs::{File, OpenOptions},
-    io::Write,
-};
+use file_ops::append_to_file;
 
-/// Generates a TOML configuration file for a Rust project.
-///
-/// This function creates a TOML file with specific dependencies for a Rust project
-/// located at the given `project_dir` with the specified `file_name`.
-///
-/// # Arguments
-///
-/// * `project_dir` - The directory where the project is located.
-/// * `file_name` - The name of the project.
-///
-/// # Returns
-///
-/// Returns a `Result` containing the generated TOML content as a string,
-/// or an error if the operation fails.
 pub fn gen_toml(
-    project_dir: &std::path::PathBuf,
+    project_dir: &std::path::Path,
 ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
     let deps = "
     axum = { version = \"0.7\", features = [\"macros\"] }
@@ -38,15 +21,9 @@ tower = \"0.5.2\"
 
     ";
 
-    let mut file = OpenOptions::new()
-        .write(true) // Enable writing to the file.
-        .append(true) // Set the append mode.  Crucially, this makes it append.
-        .create(true) // Create the file if it doesn't exist.
-        .open(project_dir.join("Cargo.toml"))?; // Open the file, returning a Result.
-
-    file.write_all(deps.as_bytes()).map_err(|e| {
-        eprintln!("Error writing to file: {}", e);
-        e
-    })?;
+    match append_to_file(&project_dir.join("Cargo.toml"), deps) {
+        Ok(_) => (),
+        Err(e) => println!("toml error: {e}"),
+    }
     Ok(deps.to_string())
 }

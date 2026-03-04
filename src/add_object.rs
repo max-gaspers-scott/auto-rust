@@ -1,9 +1,11 @@
-use std::{fs::{File, OpenOptions}, io::{BufWriter, Write}};
+use std::{
+    fs::OpenOptions,
+    io::{BufWriter, Write},
+};
 
-
-pub fn add_object(path:  &std::path::Path) -> Result<(), Box<dyn std::error::Error>> {
+pub fn add_object(path: &std::path::Path) -> Result<(), Box<dyn std::error::Error>> {
     print!("{}\n", path.display());
-let object = format!(
+    let object = format!(
 "
 async fn generate_signed_url(object_key: String) -> Result<String, anyhow::Error> {{
     println!(\"Generating signed URL for object key: {{}}\", object_key);
@@ -64,7 +66,7 @@ async fn get_signed_url(
 }}
 
 ");
-  
+
     // Open file with proper error handling
     let file = OpenOptions::new()
         .write(true)
@@ -75,11 +77,9 @@ async fn get_signed_url(
             eprintln!("Error opening file {}: {}", path.display(), e);
             e
         })?;
-        
+
     let mut file = BufWriter::new(file);
     file.write_all(object.as_bytes())?;
 
     Ok(())
 }
-
-
