@@ -1,6 +1,5 @@
 mod add_compose;
 use clap::Parser;
-use file_ops::add;
 mod add_fastapi;
 mod add_functions;
 mod add_minio;
@@ -94,9 +93,6 @@ struct Args {
 // docker run --name some-postgres -e POSTGRES_USER=dbuser -e POSTGRES_PASSWORD=p -e POSTGRES_DB=work -p 1111:5432 -d postgres
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
-    let res_a = add(2, 3);
-    println!("res: {}", res_a);
-
     let mut file_name = String::new();
     println!("Enter project name: ");
     io::stdin().read_line(&mut file_name)?;
@@ -180,39 +176,31 @@ async fn main() -> Result<(), std::io::Error> {
                     ));
                 }
             };
-            // let mut func_names = Vec::new();
-
-            // TODO: rename, this creates select all, select one, and add functions.
-            let path = project_dir.join("src/main.rs");
-            // add_basic_sql_funcs(rows, &path, &mut func_names)?;
-            // println!("function names after basic sql are {:?}", func_names);
         }
         var if var == "python" => {
             let path = project_dir.join("src/main.rs");
-            add_python_func(&path);
+            match add_python_func(&path) {
+                Ok(_) => (),
+                Err(e) => print!("python error: {e}"),
+            }
         }
-        var if var == "one_sql" => {
-            add_one_sql_funk();
-        }
-        var if var == "sql_crate" => {
-            let crate_res = gen_sql_crate(&project_dir);
+        var if var == "one_sql" => match add_one_sql_funk() {
+            Ok(_) => (),
+            Err(e) => println!("sql gen error: {e}"),
+        },
+        var if var == "sql_crate" => match gen_sql_crate(&project_dir) {
+            Ok(_) => (),
+            Err(e) => print!("gen sql error : {e}"),
+        },
+        var if var == "minio" => {
+            let path = project_dir.join("src/main.rs");
+            match add_minio(&path) {
+                Ok(_) => (),
+                Err(e) => println!("minio error: {e}"),
+            }
         }
         _ => println!("thats not a valid option"),
     }
-    // let crate_res = gen_sql_crate(&project_dir);
-    //
-    // match crate_res {
-    //     Ok(res) => {
-    //         println!("crate_res worked");
-    //     }
-    //     Err(e) => {
-    //         println!("could not use the sql gen great: {}", e);
-    //     }
-    // }
-    //
-    // add_python_func(&path)?;
-    // add_axum_end(func_names.clone(), &path)?;
-
     Ok(())
 }
 
