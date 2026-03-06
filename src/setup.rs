@@ -46,7 +46,7 @@ pub fn setup(parent_dir: &Path, file_name: &str) -> Result<(), std::io::Error> {
     // let end_res = add_axum_end(func_names.clone(), &path);
     // TODO: this looks like a dublicat of the add_minio function
     // add_object(&path);
-    let docker_res = gen_docker(&project_dir.join("Dockerfile"));
+    let docker_res = gen_docker(&project_dir.join("Dockerfile"), file_name);
     match docker_res {
         Ok(_) => println!(
             "Dockerfile created at {}",
