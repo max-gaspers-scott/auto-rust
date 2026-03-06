@@ -1,8 +1,10 @@
 use fs_extra::dir::{CopyOptions, copy};
 use std::path::Path;
-pub fn add_fastapi(destination: &std::path::PathBuf) -> Result<(), Box<dyn std::error::Error>> {
-    let from = Path::new("fastapi-template");
-    // let destination = format!("../{}", path);
+pub fn add_fastapi(destination: &std::path::Path) -> Result<(), Box<dyn std::error::Error>> {
+    // bad code :(
+    // should not hardcode like this
+    let from = Path::new("/home/mgs/auto-rust/fastapi-template");
+    let destination = format!("{}", destination.to_string_lossy());
     // let to = Path::new(&destination);
 
     let options = CopyOptions::new(); // Use default options
@@ -18,4 +20,3 @@ pub fn add_fastapi(destination: &std::path::PathBuf) -> Result<(), Box<dyn std::
     println!("✅ Directory copied successfully!");
     Ok(())
 }
-

@@ -4,11 +4,7 @@ use std::path::PathBuf;
 use std::{fs, io};
 
 pub fn append_to_file(path: &std::path::Path, text: &str) -> Result<(), io::Error> {
-    let mut file = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .open(path)?;
+    let mut file = OpenOptions::new().create(true).append(true).open(path)?;
     file.write_all(text.as_bytes())?;
     file.flush()?;
     Ok(())

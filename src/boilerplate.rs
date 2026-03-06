@@ -86,7 +86,7 @@ pub fn add_axum_end(funcs: Vec<String>, file_path: &std::path::Path) -> Result<(
             format!("\t.route(\"/{func}\", {http_method}({func}))\n").to_string()
         })
         .collect::<String>();
-    routs.push_str("\t.route(\"/signed-urls/:video_path\", get(get_signed_url))\n");
+    routs.push_str("\t//.route(\"/signed-urls/:video_path\", get(get_signed_url))\n");
     let ending = format!(
         r###"
 async fn health() -> String {{"healthy".to_string() }}
@@ -123,7 +123,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     let app = Router::new()
     .route("/health", get(health))
     {routs}
-    .route("/python", get(python))
     .fallback_service(static_service)
     .layer(
         CorsLayer::new()
