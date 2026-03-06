@@ -1,86 +1,33 @@
 mod add_compose;
+mod gen_docker;
 use clap::Parser;
 mod add_fastapi;
-mod add_functions;
 mod add_minio;
 mod add_object;
 mod add_python;
 mod add_react;
 mod add_tests;
-mod base_structs;
 mod boilerplate;
-mod gen_docker;
-mod gen_examples;
 mod gen_sql;
 mod gen_toml;
 // mod llm;
 mod add_one_sql_funk;
 mod gen_sql_crate;
-mod schema;
-mod sql_funcs;
 
 mod setup;
 use crate::gen_sql_crate::gen_sql_crate;
 use add_compose::add_compose;
-use add_fastapi::add_fastapi;
 use add_minio::add_minio;
-use add_one_sql_funk::add_one_sql_funk;
+use add_one_sql_funk::{add_one_post, add_one_sql_funk};
 use add_python::add_python_func;
 use add_react::create_react_app;
-pub use base_structs::{Row, create_type_map};
+// pub use base_structs::{Row, create_type_map};
 use boilerplate::{add_axum_end, add_top_boilerplate};
-use convert_case::{Case, Casing};
-use gen_docker::gen_docker;
-use gen_examples::gen_examples;
 use gen_sql::gen_sql;
-use gen_toml::gen_toml;
-pub use schema::{Col, extract_column_info, extract_table_names, extract_table_schemas};
-use serde::de::value::{self, Error};
-pub use sql_funcs::add_basic_sql_funcs;
-use sqlx::FromRow;
-use std::collections::HashMap;
-use std::fmt::format;
-use std::fs::OpenOptions;
-use std::io::Write;
-use std::io::{self, BufWriter};
-use std::net::{SocketAddr, TcpListener};
-use std::path;
-use std::process::{Command, Output};
+use std::{fs::write, io};
 
 // This function is now in base_structs.rs
-fn create_rows_from_sql(file_path: &std::path::Path) -> Result<Vec<Row>, io::Error> {
-    let table_names = extract_table_names(&file_path.display().to_string())?;
-    let schemas = extract_table_schemas(&file_path.display().to_string())?;
-    let mut rows: Vec<Row> = Vec::new();
 
-    if table_names.len() != schemas.len() {
-        eprintln!("Warning: Number of table names and schemas do not match!");
-    }
-
-    for (table_name, schema) in table_names.iter().zip(schemas.iter()) {
-        let cleaned_name = table_name
-            .split('.')
-            .last()
-            .unwrap_or(&table_name)
-            .trim_matches('"')
-            .to_string();
-        let cols = extract_column_info(schema);
-        //let cols = c.into_iter().filter(|col| {
-        //  !col.auto_gen
-        //}).collect::<Vec<_>>();
-        let row = Row {
-            name: cleaned_name,
-            cols,
-        };
-        rows.push(row);
-    }
-
-    Ok(rows)
-}
-enum MakeOptions {
-    Setup,
-    Sql,
-}
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
@@ -100,9 +47,7 @@ async fn main() -> Result<(), std::io::Error> {
 
     let parent_dir = std::env::current_dir()?
         .parent()
-        .ok_or_else(|| {
-            std::io::Error::new(std::io::ErrorKind::Other, "Cannot get parent directory")
-        })?
+        .ok_or_else(|| std::io::Error::other("Cannot get parent directory"))?
         .to_path_buf();
 
     let project_dir = parent_dir.join(&file_name);
@@ -112,70 +57,35 @@ async fn main() -> Result<(), std::io::Error> {
 
     //TOOO: sql branch has way to muhc respncibiltiy
     match args.what_to_make {
-        val if val == "setup".to_string() => {
-            let setup_res = setup::setup(&parent_dir, &file_name);
-            match setup_res {
-                Ok(_) => {
-                    println!("setup_res successful");
-                }
-                Err(e) => {
-                    println!("setup_res error: {}", e);
-                }
+        val if val == "setup" => match setup::setup(&parent_dir, &file_name) {
+            Ok(_) => {
+                println!("setup_res successful");
             }
-        }
-        // why???
-        val if val == "sql".to_string() => {
-            let sql_path = project_dir.join("migrations/0001_data.sql");
+            Err(e) => {
+                println!("setup_res error: {}", e);
+            }
+        },
+        val if val == "sql" => {
             let mut sql_task = String::new();
             println!(
                 "Enter the specific task for the SQL database (e.g., 'make SQL to store users and their favored food'): "
             );
             io::stdin().read_line(&mut sql_task)?;
             let mut sql_task = sql_task.trim().to_string();
-            if sql_task == "" {
+            if sql_task.is_empty() {
                 sql_task = "make a database to track infomation about hosts and renters for an airBnB like aplication. there are hosts that have a zip code, name, email, and password hash. there are also renters that have all the same colums expet the zip code.".to_string();
                 println!("using default test string");
             }
 
             // Generate SQL and create necessary files
-            match gen_sql::gen_sql(project_dir.clone(), file_name.clone(), true).await {
+            match gen_sql(project_dir.clone(), file_name.clone(), true).await {
                 Ok(content) => {
                     println!("Successfully generated SQL ({} bytes)", content.len());
                 }
                 Err(e) => {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        format!("Failed to generate SQL: {}", e),
-                    ));
+                    println!("sql error: {e}");
                 }
             }
-
-            // Process the generated SQL file
-            println!("Attempting to read SQL file from: {}", sql_path.display());
-
-            // Verify file exists
-            if !std::path::Path::new(&sql_path).exists() {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::NotFound,
-                    format!("SQL file does not exist at: {}", sql_path.display()),
-                ));
-            }
-            let r = create_rows_from_sql(&sql_path);
-            let rows = match r {
-                Ok(rows) => {
-                    println!(
-                        "Successfully parsed {} table definitions from SQL",
-                        rows.len()
-                    );
-                    rows
-                }
-                Err(e) => {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
-                        format!("Error parsing SQL file at {}: {}", sql_path.display(), e),
-                    ));
-                }
-            };
         }
         var if var == "python" => {
             let path = project_dir.join("src/main.rs");
@@ -191,6 +101,10 @@ async fn main() -> Result<(), std::io::Error> {
         var if var == "sql_crate" => match gen_sql_crate(&project_dir) {
             Ok(_) => (),
             Err(e) => print!("gen sql error : {e}"),
+        },
+        var if var == "post" => match add_one_post() {
+            Ok(_) => (),
+            Err(e) => println!("post error: {e}"),
         },
         var if var == "minio" => {
             let path = project_dir.join("src/main.rs");

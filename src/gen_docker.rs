@@ -1,7 +1,30 @@
-use std::{fs::File, fs::OpenOptions, io::Write};
+use file_ops::append_to_file;
+// potential issue
+/*
+-pub fn gen_docker(path: &std::path::Path) -> Result<(), Box<dyn std::error::Error>> {
+-    let path_text = path.to_string_lossy();
++pub fn gen_docker(dockerfile_path: &std::path::Path, binary_name: &str) -> Result<(), Box<dyn std::error::Error>> {
+     let docker = format!(
+         "
+ ...
+-COPY --from=builder /app/target/release/{path_text} ./
++COPY --from=builder /app/target/release/{binary_name} ./
+ ...
+-RUN chown -R appuser:appuser /app && chmod +x /app/{path_text}
++RUN chown -R appuser:appuser /app && chmod +x /app/{binary_name}
+ ...
+-CMD [\"/app/{path_text}\"]
++CMD [\"/app/{binary_name}\"]
+ ...
+     );
+-    append_to_file(path, &docker);
++    append_to_file(dockerfile_path, &docker);
+     Ok(())
+ }
 
-pub fn gen_docker(path: &str) -> Result<(), Box<dyn std::error::Error>> {
-    print!("{}\n", path);
+*/
+pub fn gen_docker(path: &std::path::Path) -> Result<(), Box<dyn std::error::Error>> {
+    let path_text = path.to_string_lossy();
     let docker = format!(
         "
 # -----------------------------------------------------------------------------
@@ -65,12 +88,12 @@ RUN useradd -m -u 10001 appuser
 WORKDIR /app
 
 # Copy compiled binary & any runtime assets (e.g. migrations)
-COPY --from=builder /app/target/release/{path} ./
+COPY --from=builder /app/target/release/{path_text} ./
 COPY --from=builder /app/migrations ./migrations
 COPY --from=frontend-builder /app/frontend/build ./frontend/build
 
 # Ensure the binary is executable
-RUN chown -R appuser:appuser /app && chmod +x /app/{path}
+RUN chown -R appuser:appuser /app && chmod +x /app/{path_text}
 
 USER appuser
 
@@ -78,18 +101,15 @@ USER appuser
 EXPOSE 8081
 
 # Start the server
-CMD [\"/app/{path}\"]
+CMD [\"/app/{path_text}\"]
 
 "
     );
     // Create the directory if it doesn't exist
     //std::fs::create_dir_all(path)?;
 
-    let dockerfile_path = format!("../{}/Dockerfile", path);
-    let mut file = File::create(&dockerfile_path)?;
-    file.write_all(docker.as_bytes())?;
+    append_to_file(path, &docker)?;
 
-    println!("Dockerfile created at {}", dockerfile_path);
     Ok(())
 }
 

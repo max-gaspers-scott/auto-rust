@@ -1,4 +1,4 @@
-use std::{fs::File, fs::OpenOptions, io::Write};
+use std::{fs::File, io::Write};
 
 pub fn add_compose(path: &str) -> Result<(), Box<dyn std::error::Error>> {
     print!("{}\n", path);
@@ -103,50 +103,6 @@ volumes:
     file.write_all(compose.as_bytes())?;
 
     println!("compose created at {}", compose_path);
-
-    // nginx
-
-    let nginx = format!(
-        "events {{}}
-
-http {{
-    server {{
-        listen 80;
-
-        location / {{
-            proxy_pass http://frontend:3000;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-        }}
-
-        location /api/ {{
-            proxy_pass http://app:8081/;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-        }}
-
-        location /python/ {{
-            proxy_pass http://python:8003/;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-        }}
-    }}
-}}"
-    );
-
-    // let nginx_path = format!("../{}/nginx/nginx.conf", path);
-    // std::fs::create_dir_all(format!("../{}/nginx", path))?;
-    // let mut file = File::create(&nginx_path)?;
-    // file.write_all(nginx.as_bytes())?;
-
-    // println!("nginx created at {}", nginx_path);
-
     Ok(())
 }
 
