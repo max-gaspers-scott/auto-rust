@@ -1,6 +1,5 @@
 use crate::add_axum_end;
 use crate::add_compose;
-use crate::add_fastapi::add_fastapi;
 use crate::add_top_boilerplate;
 use crate::create_react_app;
 use crate::gen_docker::gen_docker;
@@ -85,14 +84,6 @@ pub fn setup(parent_dir: &Path, file_name: &str) -> Result<(), std::io::Error> {
     }
 
     let port_num = 8081;
-
-    let fastapi_res = add_fastapi(&path);
-
-    match fastapi_res {
-        Ok(_) => println!("added the fastapi folder "),
-        Err(e) => eprintln!("error while adding the fastapi folder: {}", e),
-    }
-
     let addr: SocketAddr = "0.0.0.0:8081".parse().unwrap();
     match TcpListener::bind(addr) {
         // If the bind operation is successful, it means the port was available.
