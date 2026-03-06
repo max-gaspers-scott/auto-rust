@@ -1,9 +1,11 @@
-use std::{
-    fs::OpenOptions,
-    io::{BufWriter, Write},
-};
+use file_ops::append_to_file;
 
 pub fn add_object(path: &std::path::Path) -> Result<(), Box<dyn std::error::Error>> {
+    if let Ok(existing) = std::fs::read_to_string(path) {
+        if existing.contains("async fn generate_signed_url(object_key: String)") {
+            return Ok(());
+        }
+    }
     print!("{}\n", path.display());
     let object = format!(
 "
@@ -66,20 +68,7 @@ async fn get_signed_url(
 }}
 
 ");
-
-    // Open file with proper error handling
-    let file = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .append(true)
-        .open(path)
-        .map_err(|e| {
-            eprintln!("Error opening file {}: {}", path.display(), e);
-            e
-        })?;
-
-    let mut file = BufWriter::new(file);
-    file.write_all(object.as_bytes())?;
+    append_to_file(path, &object);
 
     Ok(())
 }

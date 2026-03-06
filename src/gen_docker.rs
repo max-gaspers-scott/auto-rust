@@ -1,5 +1,28 @@
 use file_ops::append_to_file;
+// potential issue
+/*
+-pub fn gen_docker(path: &std::path::Path) -> Result<(), Box<dyn std::error::Error>> {
+-    let path_text = path.to_string_lossy();
++pub fn gen_docker(dockerfile_path: &std::path::Path, binary_name: &str) -> Result<(), Box<dyn std::error::Error>> {
+     let docker = format!(
+         "
+ ...
+-COPY --from=builder /app/target/release/{path_text} ./
++COPY --from=builder /app/target/release/{binary_name} ./
+ ...
+-RUN chown -R appuser:appuser /app && chmod +x /app/{path_text}
++RUN chown -R appuser:appuser /app && chmod +x /app/{binary_name}
+ ...
+-CMD [\"/app/{path_text}\"]
++CMD [\"/app/{binary_name}\"]
+ ...
+     );
+-    append_to_file(path, &docker);
++    append_to_file(dockerfile_path, &docker);
+     Ok(())
+ }
 
+*/
 pub fn gen_docker(path: &std::path::Path) -> Result<(), Box<dyn std::error::Error>> {
     let path_text = path.to_string_lossy();
     let docker = format!(
@@ -85,7 +108,7 @@ CMD [\"/app/{path_text}\"]
     // Create the directory if it doesn't exist
     //std::fs::create_dir_all(path)?;
 
-    append_to_file(path, &docker);
+    append_to_file(path, &docker)?;
 
     Ok(())
 }

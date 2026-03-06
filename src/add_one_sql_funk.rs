@@ -1,6 +1,6 @@
-use io::Write;
+use convert_case::{Case, Casing};
+use file_ops::{append_to_file, prepend_line_to_file};
 
-use std::fs::OpenOptions;
 use std::{fs, io};
 pub fn add_one_sql_funk() -> Result<(), std::io::Error> {
     let mut sql_struct = String::new();
@@ -81,20 +81,7 @@ fn get_{return_cols}_{match_col}(match_val: Query<{struct_type}>) -> Json<Value>
     println!("query stuct name: {}", query_struct_name);
 
     let file_path = std::env::current_dir()?.join("src/main.rs");
-
-    let mut file = OpenOptions::new().append(true).open(file_path.clone())?;
-    // let mut file = BufWriter::new(file);
-
-    let write_res = write!(&mut file, "{}", rust);
-
-    match write_res {
-        Ok(_) => {}
-        Err(e) => println!(
-            "an error writeing to {}: {}",
-            file_path.clone().display(),
-            e
-        ),
-    }
+    append_to_file(&file_path, &rust)?;
 
     Ok(())
 }
@@ -114,24 +101,35 @@ pub fn add_one_post() -> Result<(), std::io::Error> {
 
     let all_lines: Vec<&str> = sql.lines().collect();
     let len = all_lines.len();
+    if len < 4 {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "Model file has fewer than 4 lines",
+        ));
+    }
+
     let lines = &all_lines[2..len - 2];
     let og_fields: Vec<String> = lines
         .iter()
         .map(|line| {
             let words: Vec<&str> = line.split_whitespace().collect();
+            if words.len() < 2 {
+                // Handle lines without enough tokens
+                return String::new();
+            }
             let mut word = words[1].to_string();
             word.pop();
             word
         })
+        .filter(|s| !s.is_empty())
         .collect();
     let fields = &og_fields[1..];
-
     let sql_struct_captial = sql_struct.to_case(Case::Pascal);
     let mut instert_fields = String::new();
     // add every field in struct
 
     // change from hard coding
-    for field in fields.clone() {
+    for field in fields {
         instert_fields.push_str(&format!("{field}, "));
     }
     instert_fields.pop();
@@ -172,39 +170,15 @@ pub async fn post_{sql_struct}(
 }}
 "###
     );
-    println!("post");
-
     let file_path = std::env::current_dir()?.join("src/main.rs");
 
-    let mut file = OpenOptions::new().append(true).open(file_path.clone())?;
-    // let mut file = BufWriter::new(file);
-
-    let write_res = write!(&mut file, "{}", data_func);
-
-    match write_res {
-        Ok(_) => {}
-        Err(e) => println!(
-            "an error writeing to {}: {}",
-            file_path.clone().display(),
-            e
-        ),
-    };
-    prepend_line_to_file(file_path.clone(), "mod models;");
+    append_to_file(&file_path, &data_func)?;
+    prepend_line_to_file(file_path.clone(), "mod models;")?;
 
     prepend_line_to_file(
         file_path,
         &format!("use crate::models::{};", sql_struct_captial),
-    );
-
-    Ok(())
-}
-
-fn prepend_line_to_file(path: PathBuf, line_to_add: &str) -> Result<(), std::io::Error> {
-    let original_content = fs::read_to_string(path.clone())?;
-
-    let new_content = format!("{}\n{}", line_to_add, original_content);
-
-    fs::write(path, new_content)?;
+    )?;
 
     Ok(())
 }

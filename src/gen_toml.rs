@@ -1,8 +1,8 @@
+use std::io;
+
 use file_ops::append_to_file;
 
-pub fn gen_toml(
-    project_dir: &std::path::Path,
-) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+pub fn gen_toml(project_dir: &std::path::Path) -> Result<(), io::Error> {
     let deps = "
     axum = { version = \"0.7\", features = [\"macros\"] }
 tokio = { version = \"1\", features = [\"full\", \"time\"] }
@@ -22,8 +22,7 @@ tower = \"0.5.2\"
     ";
 
     match append_to_file(&project_dir.join("Cargo.toml"), deps) {
-        Ok(_) => (),
-        Err(e) => println!("toml error: {e}"),
+        Ok(_) => Ok(()),
+        Err(e) => Err(e),
     }
-    Ok(deps.to_string())
 }

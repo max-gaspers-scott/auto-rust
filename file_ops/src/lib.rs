@@ -1,10 +1,16 @@
 use std::fs::OpenOptions;
 use std::io::Write;
-use std::io::{self};
+use std::path::PathBuf;
+use std::{fs, io};
 
 pub fn append_to_file(path: &std::path::Path, text: &str) -> Result<(), io::Error> {
-    let mut file = OpenOptions::new().write(true).create(true).open(path)?;
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(path)?;
     file.write_all(text.as_bytes())?;
+    file.flush()?;
     Ok(())
 }
 
@@ -40,3 +46,13 @@ pub fn append_to_file(path: &std::path::Path, text: &str) -> Result<(), io::Erro
 //
 //     }
 // }
+
+pub fn prepend_line_to_file(path: PathBuf, line_to_add: &str) -> Result<(), std::io::Error> {
+    let original_content = fs::read_to_string(path.clone())?;
+
+    let new_content = format!("{}\n{}", line_to_add, original_content);
+
+    fs::write(path, new_content)?;
+
+    Ok(())
+}
