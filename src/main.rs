@@ -78,7 +78,7 @@ async fn main() -> Result<(), std::io::Error> {
             }
 
             // Generate SQL and create necessary files
-            match gen_sql(project_dir.clone(), file_name.clone(), true).await {
+            match gen_sql(project_dir.clone(), file_name.clone(), false).await {
                 Ok(content) => {
                     println!("Successfully generated SQL ({} bytes)", content.len());
                 }
@@ -113,7 +113,7 @@ async fn main() -> Result<(), std::io::Error> {
                 Err(e) => println!("minio error: {e}"),
             }
         }
-        _ => println!("thats not a valid option"),
+        _ => println!("valid options are: setup, sql, one_sql, sql_create, post, minio"),
     }
     Ok(())
 }
