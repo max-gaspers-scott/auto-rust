@@ -55,10 +55,7 @@ pub async fn gen_sql(
     dotenv().ok();
     let api_key_name = "GEMINI_API_KEY";
     let api_key: String = match env::var(api_key_name) {
-        Ok(val) => {
-            println!("{}", val.to_string());
-            val.trim().to_string()
-        }
+        Ok(val) => val.trim().to_string(),
         Err(e) => {
             println!("couldn't interpret {api_key_name}: {e}");
             format!("{}", e)
@@ -81,7 +78,7 @@ pub async fn gen_sql(
     Example:
     If I say "define a postgresSQL database that stores work sessions for users. 
     Each user has a start time, duration, break time, and a user. Each user has an email and a name. 
-    Each work session has exacsqltly one user and each user can have many work sessions."
+    Each work session has exactly one user and each user can have many work sessions."
 
     You should output:
     

@@ -70,6 +70,7 @@ pub fn add_one_sql_funk() -> Result<(), std::io::Error> {
         payload.push_str(&format!("\"{e}\": elemint.{e},\n"));
     }
     let capitalized = sql_metadata.capitalized_struct;
+    let sql_struct = sql_metadata.sql_struct;
     let rust = format!(
         r###"
 
@@ -83,7 +84,7 @@ async fn get_{return_underscors}_{match_col}(
     match_val: Query<{query_struct_name}>,
     extract::State(pool): extract::State<PgPool>,
 ) -> Json<Value> {{
-    let query = format!("SELECT * FROM users WHERE user_id = $1");
+    let query = format!("SELECT * FROM {sql_struct} WHERE {match_col} = $1");
     let q = sqlx::query_as::<_, {capitalized}>(&query).bind(match_val.{match_col}.clone());
 
     let elemint = q.fetch_optional(&pool).await;
