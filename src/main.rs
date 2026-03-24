@@ -35,15 +35,17 @@ struct Args {
     what_to_make: String,
 }
 
-// todo: kick off postgress
-// https://users.rust-lang.org/t/how-to-execute-a-root-command-on-linux/50066/7
-// docker run --name some-postgres -e POSTGRES_USER=dbuser -e POSTGRES_PASSWORD=p -e POSTGRES_DB=work -p 1111:5432 -d postgres
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
     let mut file_name = String::new();
     println!("Enter project name: ");
     io::stdin().read_line(&mut file_name)?;
     let file_name = file_name.trim().to_string();
+    let file_name = if file_name.is_empty() {
+        std::env::current_dir()?.display().to_string()
+    } else {
+        file_name
+    };
 
     let parent_dir = std::env::current_dir()?
         .parent()
@@ -55,7 +57,6 @@ async fn main() -> Result<(), std::io::Error> {
     println!("Parent directory: {}", parent_dir.display());
     let args = Args::parse();
 
-    //TOOO: sql branch has way to muhc respncibiltiy
     match args.what_to_make {
         val if val == "setup" => match setup::setup(&parent_dir, &file_name) {
             Ok(_) => {
@@ -71,11 +72,7 @@ async fn main() -> Result<(), std::io::Error> {
                 "Enter the specific task for the SQL database (e.g., 'make SQL to store users and their favored food'): "
             );
             io::stdin().read_line(&mut sql_task)?;
-            // let mut sql_task = sql_task.trim().to_string();
-            // if sql_task.is_empty() {
-            //     sql_task = "make a database to track infomation about hosts and renters for an airBnB like aplication. there are hosts that have a zip code, name, email, and password hash. there are also renters that have all the same colums expet the zip code.".to_string();
-            //     println!("using default test string");
-            // }
+
             let sql_task = if sql_task.trim().to_string().is_empty() {
                 String::from(
                     "make a database to track infomation about hosts and renters for an airBnB like aplication. there are hosts that have a zip code, name, email, and password hash. there are also renters that have all the same colums expet the zip code.",
