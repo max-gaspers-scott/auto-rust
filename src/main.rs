@@ -71,14 +71,21 @@ async fn main() -> Result<(), std::io::Error> {
                 "Enter the specific task for the SQL database (e.g., 'make SQL to store users and their favored food'): "
             );
             io::stdin().read_line(&mut sql_task)?;
-            let mut sql_task = sql_task.trim().to_string();
-            if sql_task.is_empty() {
-                sql_task = "make a database to track infomation about hosts and renters for an airBnB like aplication. there are hosts that have a zip code, name, email, and password hash. there are also renters that have all the same colums expet the zip code.".to_string();
-                println!("using default test string");
-            }
+            // let mut sql_task = sql_task.trim().to_string();
+            // if sql_task.is_empty() {
+            //     sql_task = "make a database to track infomation about hosts and renters for an airBnB like aplication. there are hosts that have a zip code, name, email, and password hash. there are also renters that have all the same colums expet the zip code.".to_string();
+            //     println!("using default test string");
+            // }
+            let sql_task = if sql_task.trim().to_string().is_empty() {
+                String::from(
+                    "make a database to track infomation about hosts and renters for an airBnB like aplication. there are hosts that have a zip code, name, email, and password hash. there are also renters that have all the same colums expet the zip code.",
+                )
+            } else {
+                sql_task.trim().to_string()
+            };
 
             // Generate SQL and create necessary files
-            match gen_sql(project_dir.clone(), file_name.clone(), false).await {
+            match gen_sql(project_dir.clone(), sql_task.clone(), false).await {
                 Ok(content) => {
                     println!("Successfully generated SQL ({} bytes)", content.len());
                 }
@@ -113,7 +120,7 @@ async fn main() -> Result<(), std::io::Error> {
                 Err(e) => println!("minio error: {e}"),
             }
         }
-        _ => println!("valid options are: setup, sql, one_sql, sql_create, post, minio"),
+        _ => println!("valid options are: setup, sql, one_sql, sql_crate, post, minio"),
     }
     Ok(())
 }

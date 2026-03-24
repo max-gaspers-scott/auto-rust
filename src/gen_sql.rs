@@ -50,6 +50,7 @@ pub async fn gen_sql(
 
         return Ok("success".to_string());
     };
+    println!("made it to befor dotenv");
 
     dotenv().ok();
     let api_key_name = "GEMINI_API_KEY";
@@ -65,20 +66,12 @@ pub async fn gen_sql(
         r#"you are a postgresSQL database designer. Here is how you should write postgres SQL code to define a database.
     
     Tables should be defined with CREATE TABLE IF NOT EXISTS. 
-    Only use these datatypes: 
-    - BOOL, CHAR, SMALLINT, SMALLSERIAL, INT2, INT, SERIAL, INT4, BIGINT, 
-    - BIGSERIAL, INT8, REAL, FLOAT4, DOUBLE PRECISION, FLOAT8, VARCHAR, 
-    - CHAR(N), TEXT, NAME, CITEXT, BYTEA, VOID, INTERVAL, 
-    - INT8RANGE, INT4RANGE, TSRANGE, TSTZRANGE, DATERANGE, 
-    - TIMESTAMPTZ, TIMESTAMP, DATE, TIME, TIMETZ, 
-    - UUID, INET, CIDR, MACADDR, BIT, VARBIT, JSON, JSONB
-
+    
     Rules:
     - Use UNIQUE where necessary (inline, not at the bottom of the table)
     - Use gen_random_uuid() when using UUIDs
-    - Don't use NUMERIC, instead use INT or FLOAT
     - Don't use table names like `public.\"user\"`
-    - All tables should have a UUID primary key that auto-increments
+    - All tables should have a UUID primary key
     - Don't use any comments
     - Output only the sql code, nothing else.
 
