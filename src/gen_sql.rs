@@ -50,11 +50,15 @@ pub async fn gen_sql(
 
         return Ok("success".to_string());
     };
+    println!("made it to befor dotenv");
 
     dotenv().ok();
     let api_key_name = "GEMINI_API_KEY";
     let api_key: String = match env::var(api_key_name) {
-        Ok(val) => val.trim().to_string(),
+        Ok(val) => {
+            println!("{}", val.to_string());
+            val.trim().to_string()
+        }
         Err(e) => {
             println!("couldn't interpret {api_key_name}: {e}");
             format!("{}", e)
@@ -65,27 +69,19 @@ pub async fn gen_sql(
         r#"you are a postgresSQL database designer. Here is how you should write postgres SQL code to define a database.
     
     Tables should be defined with CREATE TABLE IF NOT EXISTS. 
-    Only use these datatypes: 
-    - BOOL, CHAR, SMALLINT, SMALLSERIAL, INT2, INT, SERIAL, INT4, BIGINT, 
-    - BIGSERIAL, INT8, REAL, FLOAT4, DOUBLE PRECISION, FLOAT8, VARCHAR, 
-    - CHAR(N), TEXT, NAME, CITEXT, BYTEA, VOID, INTERVAL, 
-    - INT8RANGE, INT4RANGE, TSRANGE, TSTZRANGE, DATERANGE, 
-    - TIMESTAMPTZ, TIMESTAMP, DATE, TIME, TIMETZ, 
-    - UUID, INET, CIDR, MACADDR, BIT, VARBIT, JSON, JSONB
-
+    
     Rules:
     - Use UNIQUE where necessary (inline, not at the bottom of the table)
     - Use gen_random_uuid() when using UUIDs
-    - Don't use NUMERIC, instead use INT or FLOAT
     - Don't use table names like `public.\"user\"`
-    - All tables should have a UUID primary key that auto-increments
+    - All tables should have a UUID primary key
     - Don't use any comments
     - Output only the sql code, nothing else.
 
     Example:
     If I say "define a postgresSQL database that stores work sessions for users. 
     Each user has a start time, duration, break time, and a user. Each user has an email and a name. 
-    Each work session has exactly one user and each user can have many work sessions."
+    Each work session has exacsqltly one user and each user can have many work sessions."
 
     You should output:
     

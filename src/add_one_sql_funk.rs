@@ -1,32 +1,49 @@
 use convert_case::{Case, Casing};
 use file_ops::{append_to_file, prepend_line_to_file};
 
-use std::{fs, io};
-pub fn add_one_sql_funk() -> Result<(), std::io::Error> {
+struct Sql_metadata {
+    sql_struct: String,
+    capitalized_struct: String,
+    sql: String, // should be path buf??
+}
+
+fn get_sql_metadata() -> Sql_metadata {
     let mut sql_struct = String::new();
     println!("what table do you want to use"); // should give user list to pick from
     io::stdin()
         .read_line(&mut sql_struct)
         .expect("error reading from std in");
     sql_struct = sql_struct.trim_end().to_string();
+    let capitalized_struct = sql_struct.to_case(Case::Pascal);
     let file_path = format!("src/models/{}.rs", sql_struct.trim());
-    println!("file name: {}", file_path);
     // read file
     let sql_bytes = fs::read(file_path).expect("that was not a valid file / sql struct");
     let sql = String::from_utf8(sql_bytes).expect("file contains invalid UTF-8");
 
+    Sql_metadata {
+        sql_struct,
+        capitalized_struct,
+        sql,
+    }
+}
+
+use std::{fmt::format, fs, io};
+pub fn add_one_sql_funk() -> Result<(), std::io::Error> {
+    let sql_metadata = get_sql_metadata();
     // split on lines and get third row (index 2)
-    let lines: Vec<&str> = sql.lines().collect();
+    let lines: Vec<&str> = sql_metadata.sql.lines().collect();
     let struct_type = if lines.len() > 2 {
         let third_row = lines[2];
         let words: Vec<&str> = third_row.split_whitespace().collect();
-        if words.len() > 1 {
-            words[1] // second word (index 1)
+        if words.len() > 2 {
+            let mut word = words[2].to_string();
+            word.pop();
+            word
         } else {
-            "no second word"
+            String::from("no second word")
         }
     } else {
-        "no third row"
+        String::from("no third row")
     };
 
     // ask about what colums to return
@@ -36,6 +53,7 @@ pub fn add_one_sql_funk() -> Result<(), std::io::Error> {
         .read_line(&mut return_cols)
         .expect("error reading from std in");
     return_cols = return_cols.trim_end().to_string();
+    let return_underscors = return_cols.replace(" ", "_");
     // ask what colum to match on
     println!("what colum do you want to match (the select ___ part");
     let mut match_col = String::new();
@@ -47,6 +65,11 @@ pub fn add_one_sql_funk() -> Result<(), std::io::Error> {
     println!("type is: {}", struct_type);
     match_col = match_col.trim_end().to_string();
     let query_struct_name = format!("{match_col}_query");
+    let mut payload = String::new();
+    for e in return_cols.split_whitespace() {
+        payload.push_str(&format!("\"{e}\": elemint.{e},\n"));
+    }
+    let capitalized = sql_metadata.capitalized_struct;
     let rust = format!(
         r###"
 
@@ -56,22 +79,32 @@ struct {query_struct_name} {{
     {match_col}: {struct_type},
 }}
 
-fn get_{return_cols}_{match_col}(match_val: Query<{struct_type}>) -> Json<Value> {{
-    
-    let query = format!(\"SELECT * FROM users WHERE user_id = $1\");
-    let q = sqlx::query_as::<_, {sql_struct}>(&query).bind(match_val.{match_col}.clone());
+async fn get_{return_underscors}_{match_col}(
+    match_val: Query<{query_struct_name}>,
+    extract::State(pool): extract::State<PgPool>,
+) -> Json<Value> {{
+    let query = format!("SELECT * FROM users WHERE user_id = $1");
+    let q = sqlx::query_as::<_, {capitalized}>(&query).bind(match_val.{match_col}.clone());
 
-    let elemint = q.fetch_optional(&pool).await.map_err(|e| {{
-        (StatusCode::INTERNAL_SERVER_ERROR, format!(\"Database err{{}}\", e))
-    }})?;
+    let elemint = q.fetch_optional(&pool).await;
+
+
 
     match elemint {{
-        Some(elemint) => Ok(Json(json!({{
+        Ok(Some(elemint)) => Json(json!({{
+            "status": "success",
             "payload": {{
-                elemint.{return_cols}
+            {payload}
             }}
-        }}))),
-        None => Err((StatusCode::NOT_FOUND, "No record found with user_id = the value")),
+        }})),
+        Ok(None) => Json(json!({{
+            "status": "error",
+            "error": "User not found"
+        }})),
+        _ => Json(json!({{
+            "status": "error",
+            "error": "User not found"
+        }})),
     }}
 }}
 "###
@@ -87,19 +120,8 @@ fn get_{return_cols}_{match_col}(match_val: Query<{struct_type}>) -> Json<Value>
 }
 
 pub fn add_one_post() -> Result<(), std::io::Error> {
-    // get file name as input
-    let mut sql_struct = String::new();
-    println!("what table do you want to use"); // should give user list to pick from
-    io::stdin()
-        .read_line(&mut sql_struct)
-        .expect("error reading from std in");
-    sql_struct = sql_struct.trim_end().to_string();
-    let file_path = format!("src/models/{}.rs", sql_struct.trim());
-    // read file
-    let sql_bytes = fs::read(file_path).expect("that was not a valid file / sql struct");
-    let sql = String::from_utf8(sql_bytes).expect("file contains invalid UTF-8");
-
-    let all_lines: Vec<&str> = sql.lines().collect();
+    let sql_metadata = get_sql_metadata();
+    let all_lines: Vec<&str> = sql_metadata.sql.lines().collect();
     let len = all_lines.len();
     if len < 4 {
         return Err(std::io::Error::new(
@@ -108,7 +130,7 @@ pub fn add_one_post() -> Result<(), std::io::Error> {
         ));
     }
 
-    let lines = &all_lines[2..len - 2];
+    let lines = &all_lines[2..len - 1];
     let og_fields: Vec<String> = lines
         .iter()
         .map(|line| {
@@ -124,9 +146,9 @@ pub fn add_one_post() -> Result<(), std::io::Error> {
         .filter(|s| !s.is_empty())
         .collect();
     let fields = &og_fields[1..];
-    let sql_struct_captial = sql_struct.to_case(Case::Pascal);
+
+    let sql_struct_captial = sql_metadata.capitalized_struct;
     let mut instert_fields = String::new();
-    // add every field in struct
 
     // change from hard coding
     for field in fields {
@@ -147,6 +169,7 @@ pub fn add_one_post() -> Result<(), std::io::Error> {
     doller_numbers.pop();
     doller_numbers.pop();
 
+    let sql_struct = sql_metadata.sql_struct;
     let data_func = format!(
         r###"
         // db teble names have a s at the end that is removed in struct name
