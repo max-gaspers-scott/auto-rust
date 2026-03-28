@@ -197,10 +197,10 @@ pub async fn post_{sql_struct}(
     let file_path = std::env::current_dir()?.join("src/main.rs");
 
     append_to_file(&file_path, &data_func)?;
-    prepend_line_to_file(file_path.clone(), "mod models;")?;
+    prepend_line_to_file(&file_path, "mod models;")?;
 
     prepend_line_to_file(
-        file_path,
+        &file_path,
         &format!("use crate::models::{};", sql_struct_captial),
     )?;
 

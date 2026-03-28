@@ -1,4 +1,5 @@
 mod add_compose;
+mod fix_structs;
 mod gen_docker;
 use clap::Parser;
 mod add_fastapi;
@@ -13,6 +14,8 @@ mod add_one_sql_funk;
 mod gen_sql_crate;
 
 mod setup;
+
+use crate::fix_structs::add_pub;
 use crate::gen_sql_crate::gen_sql_crate;
 use add_compose::add_compose;
 use add_minio::add_minio;
@@ -114,6 +117,9 @@ async fn main() -> Result<(), std::io::Error> {
                 Ok(_) => (),
                 Err(e) => println!("minio error: {e}"),
             }
+        }
+        var if var == "pub_struct" => {
+            add_pub(&project_dir.join("src/models"))?;
         }
         _ => println!("valid options are: setup, sql, one_sql, sql_crate, post, minio"),
     }

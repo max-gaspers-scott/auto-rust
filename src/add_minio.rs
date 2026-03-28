@@ -18,7 +18,7 @@ pub fn add_minio(file_path: &std::path::Path) -> Result<(), io::Error> {
 
     "###;
 
-    prepend_line_to_file(file_path.to_path_buf(), top_of_file)?;
+    prepend_line_to_file(file_path, top_of_file)?;
 
     let funk_str = r###"
 
