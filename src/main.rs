@@ -3,10 +3,8 @@ mod gen_docker;
 use clap::Parser;
 mod add_fastapi;
 mod add_minio;
-mod add_object;
 mod add_python;
 mod add_react;
-mod add_tests;
 mod boilerplate;
 mod gen_sql;
 mod gen_toml;
@@ -24,7 +22,7 @@ use add_react::create_react_app;
 // pub use base_structs::{Row, create_type_map};
 use boilerplate::{add_axum_end, add_top_boilerplate};
 use gen_sql::gen_sql;
-use std::{fs::write, io};
+use std::io;
 
 // This function is now in base_structs.rs
 

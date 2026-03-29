@@ -1,13 +1,13 @@
 use convert_case::{Case, Casing};
 use file_ops::{append_to_file, prepend_line_to_file};
 
-struct Sql_metadata {
+struct SqlMetadata {
     sql_struct: String,
     capitalized_struct: String,
     sql: String, // should be path buf??
 }
 
-fn get_sql_metadata() -> Sql_metadata {
+fn get_sql_metadata() -> SqlMetadata {
     let mut sql_struct = String::new();
     println!("what table do you want to use"); // should give user list to pick from
     io::stdin()
@@ -20,14 +20,14 @@ fn get_sql_metadata() -> Sql_metadata {
     let sql_bytes = fs::read(file_path).expect("that was not a valid file / sql struct");
     let sql = String::from_utf8(sql_bytes).expect("file contains invalid UTF-8");
 
-    Sql_metadata {
+    SqlMetadata {
         sql_struct,
         capitalized_struct,
         sql,
     }
 }
 
-use std::{fmt::format, fs, io};
+use std::{fs, io};
 pub fn add_one_sql_funk() -> Result<(), std::io::Error> {
     let sql_metadata = get_sql_metadata();
     // split on lines and get third row (index 2)

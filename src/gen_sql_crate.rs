@@ -1,6 +1,4 @@
-use std::process::{Command, Output};
-
-use std::path;
+use std::process::Command;
 
 pub fn gen_sql_crate(project_dir: &std::path::Path) -> Result<(), std::io::Error> {
     let sql_path = project_dir.join("migrations/0001_data.sql");
@@ -86,7 +84,7 @@ pub fn gen_sql_crate(project_dir: &std::path::Path) -> Result<(), std::io::Error
         ])
         .status()?;
 
-    let exec_res = Command::new("docker")
+    Command::new("docker")
         .args([
             "exec",
             "sql_gen_con",
