@@ -1,9 +1,7 @@
 use std::{fs::File, io::Write};
 
 pub fn add_compose(path: &str) -> Result<(), Box<dyn std::error::Error>> {
-    print!("{}\n", path);
-    let compose = format!(
-        "
+    let compose = "
 
 version: '3.8'
 
@@ -92,12 +90,13 @@ volumes:
   postgres_data:
   minio_data:
 
-
 "
-    );
+    .to_string();
     // Create the directory if it doesn't exist
     //std::fs::create_dir_all(path)?;
 
+    // TODO: will break if auto-rust folder is not in the save folder that you want you new project
+    // in (aka /home)
     let compose_path = format!("../{}/docker-compose.yaml", path);
     let mut file = File::create(&compose_path)?;
     file.write_all(compose.as_bytes())?;

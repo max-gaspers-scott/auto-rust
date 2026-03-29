@@ -1,5 +1,5 @@
-use std::fs::OpenOptions;
-use std::io::{self, Write};
+use file_ops::append_to_file;
+use std::io;
 
 pub fn add_top_boilerplate(file_path: &std::path::Path) -> Result<(), io::Error> {
     // Ensure parent directories exist
@@ -7,32 +7,23 @@ pub fn add_top_boilerplate(file_path: &std::path::Path) -> Result<(), io::Error>
         std::fs::create_dir_all(parent)?;
     }
 
-    let mut file = OpenOptions::new()
-        .write(true) // Enable writing to the file.
-        .create(true) // Create the file if it doesn't exist.
-        .truncate(true) // Clear the file if it exists
-        .open(file_path)
-        .map_err(|e| {
-            eprintln!("Error opening file {}: {}", file_path.display(), e);
-            e
-        })?;
     let top_boiler = r###"
-use axum::{                                                                                                                                                                      
-    extract::{self, Path, Query},  
-    routing::{get, post},                                                                                                                                                        
-    Json, Router,                        
-};       
+use axum::{
+    extract::{self, Path, Query},
+    routing::{get, post},
+    Json, Router,
+};
 use minio_rsc::{Minio, provider::StaticProvider, client::PresignedArgs};
-use serde::{Deserialize, Serialize};                                                                                                                                                          
-use serde_json::{json, Value};                                                                                                                                                  
-use sqlx::PgPool;                                                                                                                                                               
-use sqlx::{postgres::PgPoolOptions, prelude::FromRow};                                                                                                                           
-use std::env;                                                                                                                                                                    
-use std::net::SocketAddr;                                                                                                                                                        
-use std::result::Result;                                                                                                                                                         
-use std::sync::Arc;                                                                                                                                                              
-use axum::http::StatusCode;                  
-use sqlx::types::chrono::Utc; 
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
+use sqlx::PgPool;
+use sqlx::{postgres::PgPoolOptions, prelude::FromRow};
+use std::env;
+use std::net::SocketAddr;
+use std::result::Result;
+use std::sync::Arc;
+use axum::http::StatusCode;
+use sqlx::types::chrono::Utc;
 use std::collections::HashMap;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 use axum::http::Method;
@@ -44,8 +35,7 @@ use tower_http::services::ServeDir;
 
 
 "###;
-    file.write_all(top_boiler.as_bytes())?;
-
+    append_to_file(file_path, top_boiler)?;
     Ok(())
 }
 
@@ -56,25 +46,6 @@ pub fn add_axum_end(funcs: Vec<String>, file_path: &std::path::Path) -> Result<(
     }
 
     // Create tests directory structure
-    let project_root = file_path.parent().unwrap().parent().unwrap();
-    crate::add_tests::create_test_directory_structure(project_root)?;
-    crate::add_tests::add_test_dependencies_to_cargo_toml(project_root)?;
-
-    // TODO: Pass table names to generate database-specific test utilities
-    // crate::add_tests::generate_database_test_utilities(project_root, &table_names)?;
-    // crate::add_tests::generate_crud_tests(project_root, &table_names)?;
-    // crate::add_tests::generate_query_param_tests(project_root, &table_names)?;
-    // crate::add_tests::generate_error_handling_tests(project_root, &table_names)?;
-
-    let mut file = OpenOptions::new()
-        .write(true) // Enable writing to the file.
-        .create(true) // Create the file if it doesn't exist.
-        .append(true) // Set the append mode.
-        .open(file_path)
-        .map_err(|e| {
-            eprintln!("Error opening file {}: {}", file_path.display(), e);
-            e
-        })?;
     let mut routs: String = funcs
         .iter()
         .map(|func| {
@@ -145,6 +116,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
 "###
     ); //https://tidelabs.github.io/tidechain/tower_http/cors/struct.CorsLayer.html (may help with auth) 
 
-    file.write_all(ending.as_bytes())?; // comment for testing 
+    append_to_file(file_path, &ending)?;
     Ok(())
 }

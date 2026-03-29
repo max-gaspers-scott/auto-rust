@@ -41,7 +41,7 @@ pub fn setup(parent_dir: &Path, file_name: &str) -> Result<(), std::io::Error> {
         Err(e) => eprintln!("Failed to generate TOML: {}", e),
     };
 
-    let top_res = add_top_boilerplate(&path);
+    add_top_boilerplate(&path)?;
 
     // let end_res = add_axum_end(func_names.clone(), &path);
     // TODO: this looks like a dublicat of the add_minio function
