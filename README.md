@@ -1,22 +1,22 @@
-# This is a cli tool to create APIs that interact with postgress SQL databases. 
+# This is a CLI tool to create APIs that interact with PostgreSQL databases. 
 
-I think that much of the manual work of setting this up can be automated, and this project will test my hypothosis. 
-
-
-This project is structured such that it is made each subcomand increase the functionality of your api by programticly generating code based on the databas scheme you provide. 
+I think that much of the manual work of setting this up can be automated, and this project will test my hypothesis. 
 
 
-a tipical flow might be
+This project is structured such that it is made for each subcommand to increase the functionality of your api by programmatically generating code based on the database schema you provide. 
+
+
+A typical flow might be
 * setup
 * sql_crate
-* post tabelName
-* select tabelName
+* post table_name
+* select tableName
 
 whh not a tui?
-this is meant to be runrible from other programs and the output is meant to be piped into other programs 
+This is meant to be runnable from other programs, and the output is meant to be piped into other programs. This means that "text in text out" is better than lines and half blacks. 
 
-why docker?
-the generated program should be cloud agnostic and able to run on a single VPS 
+Why Docker?
+The generated program should be cloud-agnostic and able to run on a single VPS 
 
 road map 
 * minio for media storage
