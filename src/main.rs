@@ -121,7 +121,7 @@ async fn main() -> Result<(), std::io::Error> {
         var if var == "pub_struct" => {
             add_pub(&project_dir.join("src/models"))?;
         }
-        _ => println!("valid options are: setup, sql, one_sql, sql_crate, post, minio"),
+        _ => println!("valid options are: setup, sql, one_sql, sql_crate, post, minio, pub_struct"),
     }
     Ok(())
 }
