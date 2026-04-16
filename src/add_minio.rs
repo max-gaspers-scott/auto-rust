@@ -7,22 +7,15 @@ pub fn add_minio(file_path: &std::path::Path) -> Result<(), io::Error> {
         std::fs::create_dir_all(parent)?;
     }
     let top_of_file = r###"
-    // minio stuff
   use minio_rsc::Minio;
   use minio_rsc::client::PresignedArgs;
   use minio_rsc::provider::StaticProvider;
 
-  let access_key = env::var("MINIO_ACCESS_KEY").expect("MINIO_ACCESS_KEY not set");
-  let secret_key = env::var("MINIO_SECRET_KEY").expect("MINIO_SECRET_KEY not set");
-  let endpoint = env::var("MINIO_ENDPOINT").expect("MINIO_ENDPOINT not set");
-
-    "###;
+"###;
 
     prepend_line_to_file(file_path, top_of_file)?;
 
     let funk_str = r###"
-
-// add to top
 
 
 fn build_minio_client(endpoint: &str) -> Minio {
@@ -73,8 +66,7 @@ async fn get_fetch_url(id: String) -> String {
       )
       .await?
     }
-
-    "###;
+"###;
 
     append_to_file(file_path, funk_str)
 }
