@@ -1,6 +1,5 @@
 use std::fs::OpenOptions;
-use std::io::{LineWriter, Write};
-use std::path::PathBuf;
+use std::io::Write;
 use std::{fs, io};
 
 pub fn append_to_file(path: &std::path::Path, text: &str) -> Result<(), io::Error> {

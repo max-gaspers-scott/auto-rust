@@ -24,8 +24,9 @@ dotenv = "0.15.0"
 socketioxide = "0.18.1"
 clap = { version = "4.5.56", features = ["derive"] }
 file_ops = { path = "./file_ops" }
+lintable = { path = "./lintable" }
 
 [build-dependencies]
 
 [workspace]
-members = ["file_ops"]
+members = ["file_ops", "lintable"]

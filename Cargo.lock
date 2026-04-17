@@ -111,6 +111,7 @@ dependencies = [
  "dotenv",
  "file_ops",
  "fs_extra",
+ "lintable",
  "reqwest",
  "schemars",
  "serde",
@@ -1132,6 +1133,10 @@ dependencies = [
  "pkg-config",
  "vcpkg",
 ]
+
+[[package]]
+name = "lintable"
+version = "0.1.0"
 
 [[package]]
 name = "linux-raw-sys"
