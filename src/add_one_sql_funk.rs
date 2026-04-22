@@ -1,6 +1,6 @@
 use convert_case::{Case, Casing};
 use file_ops::{append_to_file, prepend_line_to_file};
-use lintable::{GenericFile, Lintable, RustFile};
+use lintable::{CodeFile, Lang};
 
 struct SqlMetadata {
     sql_struct: String,
@@ -197,14 +197,11 @@ pub async fn post_{sql_struct}(
     );
     let file_path = std::env::current_dir()?.join("src/main.rs");
 
-    let file = RustFile {
+    let my_file = CodeFile {
         path: file_path.clone(),
+        kind: Lang::Rust,
     };
-    let my_file = GenericFile {
-        path: file_path.clone(),
-    };
-    my_file.print_path();
-
+    my_file.lint();
     append_to_file(&file_path, &data_func)?;
     prepend_line_to_file(&file_path, "mod models;")?;
 
@@ -212,8 +209,5 @@ pub async fn post_{sql_struct}(
         &file_path,
         &format!("use crate::models::{};", sql_struct_captial),
     )?;
-    if !file.lint() {
-        println!("did not lint");
-    }
     Ok(())
 }
