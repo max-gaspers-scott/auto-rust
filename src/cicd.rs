@@ -112,7 +112,9 @@ gh secret set DOCKERHUB_TOKEN
         Ok(_) => println!("created dir"),
         Err(e) => println!("an error when making dir: {}", e),
     }
-    append_to_file(&path.join(".github/workflowsd/eploy.yml"), &deploy_file);
+    //TODO: does not create folders
+    // command spone + mkdir would be cheep quick option
+    append_to_file(&path.join(".github/workflowsd/deploy.yml"), &deploy_file);
     let mut rng = rand::rng();
     let port = rng.random_range(10000..=99999);
     let prod_file = format!(
