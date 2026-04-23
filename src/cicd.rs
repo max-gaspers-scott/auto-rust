@@ -1,7 +1,18 @@
 use file_ops::append_to_file;
+use rand::RngExt;
 pub fn add_git_acctions(path: &std::path::PathBuf, proj_name: &str) -> Result<(), std::io::Error> {
     println!("dockerhub token is in /home/mgs/.docker/config.json");
     let gh = r#"
+// set up git repo
+
+git inte 
+
+// then add and push
+
+git branch -M master main
+
+gh repo create
+
 gh secret set DOCKERHUB_USERNAME --body "maxthemerman"
 gh secret set VPS_IP              --body "your.server.ip"
 gh secret set VPS_USER            --body "root"
@@ -75,7 +86,7 @@ gh secret set DOCKERHUB_TOKEN
            username: ${{ secrets.VPS_USER }}
            key: ${{ secrets.VPS_SSH_KEY }}
            source: "prod.yaml" # File to copy
-           target: "~/apps/my-project/" # Folder on your server
+           target: "~/{proj_name}/" # Folder on your server
 
        - name: SSH and Restart Containers
          uses: appleboy/ssh-action@v1.0.3
@@ -85,7 +96,7 @@ gh secret set DOCKERHUB_TOKEN
            key: ${{ secrets.VPS_SSH_KEY }}
            script: |
              # Navigate to the project folder
-             cd ~/apps/my-project/
+             cd ~/{proj_name}
 
              # Pull the latest images pushed in the previous job
              docker compose -f prod.yaml pull
@@ -102,6 +113,8 @@ gh secret set DOCKERHUB_TOKEN
         Err(e) => println!("an error when making dir: {}", e),
     }
     append_to_file(&path.join(".github/workflowsd/eploy.yml"), &deploy_file);
+    let mut rng = rand::rng();
+    let port = rng.random_range(10000..=99999);
     let prod_file = format!(
         r###"
 services:
@@ -160,7 +173,7 @@ services:
     image: maxthemerman/{proj_name}-app:latest
     container_name: {proj_name}_app
     ports:
-      - "9821:8081"
+      - "{port}:8081"
     environment:
       DATABASE_URL: postgres://${{POSTGRES_USER:-dbuser}}:${{POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}}@db:5432/${{POSTGRES_DB:-data}}
       DATABASE_CONNECT_TIMEOUT: "30"
@@ -188,8 +201,34 @@ volumes:
   {proj_name}_postgres_data:
   {proj_name}_minio_data:
 
-
     "###
     );
-    append_to_file(&path.join("prod.yml"), &prod_file)
+    append_to_file(&path.join("prod.yaml"), &prod_file);
+    let dockerignor = r###"
+
+    # Ignore build artifacts
+target/
+**/node_modules/
+
+# Ignore source control
+.git
+.github
+
+# Ignore local environment files
+.env
+*.log
+
+# Ignore other service folders not needed for this build context
+fastapi-template/
+
+# Ignore temporary files
+**/.DS_Store
+**/Thumbs.db
+
+# Ignore Docker related files
+Dockerfile
+docker-compose.yaml
+prod.yaml
+""###;
+    append_to_file(&path.join(".dockerignore"), dockerignor)
 }
