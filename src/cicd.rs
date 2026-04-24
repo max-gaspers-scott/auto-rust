@@ -28,8 +28,6 @@ gh secret set DOCKERHUB_TOKEN
 "#;
 
     println!("{}", gh);
-    // TODO: add .workflows file
-    // example to be changed
     println!("name of proj is: {}", proj_name);
     let deploy_file = format!(
         r###"
@@ -114,7 +112,8 @@ gh secret set DOCKERHUB_TOKEN
     }
     //TODO: does not create folders
     // command spone + mkdir would be cheep quick option
-    append_to_file(&path.join(".github/workflowsd/deploy.yml"), &deploy_file);
+    std::fs::create_dir_all(".github/workflows");
+    append_to_file(&path.join(".github/workflows/deploy.yml"), &deploy_file);
     let mut rng = rand::rng();
     let port = rng.random_range(10000..=99999);
     let prod_file = format!(
