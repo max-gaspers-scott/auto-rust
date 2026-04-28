@@ -1,4 +1,5 @@
 mod add_compose;
+mod cicd;
 mod fix_structs;
 mod gen_docker;
 use clap::Parser;
@@ -15,6 +16,7 @@ mod gen_sql_crate;
 
 mod setup;
 
+use crate::cicd::add_git_acctions;
 use crate::fix_structs::add_pub;
 use crate::gen_sql_crate::gen_sql_crate;
 use add_compose::add_compose;
@@ -122,97 +124,7 @@ async fn main() -> Result<(), std::io::Error> {
             add_pub(&project_dir.join("src/models"))?;
         }
         var if var == "cicd" => {
-            println!("dockerhub token is in /home/mgs/.docker/config.json");
-            let gh = r#"
-gh secret set DOCKERHUB_USERNAME --body "maxthemerman"
-gh secret set VPS_IP              --body "your.server.ip"
-gh secret set VPS_USER            --body "root"
-gh secret set VPS_SSH_KEY         --body "$(cat ~/.ssh/id_ed25519)"
-
-// to get token, cd into .docker
-cat config.json
-// copy the auth string (just insid the quotes)
-echo "..." | base64 -d
-// use interactive prompt to avoid pasting stuff in bash history
-gh secret set DOCKERHUB_TOKEN
-"#;
-
-            println!("{}", gh);
-            // TODO: add .workflows file
-            // example to be changed
-            r#"
-
- name: CI/CD Pipeline
-
- on:
-   push:
-     branches: [ "main" ] # Trigger on every push to the main branch
-
- jobs:
-   # 1. Build and Push Job
-   build-and-push:
-     runs-on: ubuntu-latest
-     strategy:
-       matrix:
-         include:
-           - service: frontend
-             context: ./frontend      # Path to your frontend folder
-           - service: backend
-             context: ./backend       # Path to your backend folder
-     steps:
-       - name: Checkout Code
-         uses: actions/checkout@v4
-
-       - name: Login to Docker Hub
-         uses: docker/login-action@v3
-         with:
-           username: ${{ secrets.DOCKERHUB_USERNAME }}
-           password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-       - name: Build and Push ${{ matrix.service }}
-         uses: docker/build-push-action@v5
-         with:
-           context: ${{ matrix.context }}
-           push: true
-           # Tags the image as: username/frontend:latest and username/backend:latest
-           tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest
-
-   # 2. Deployment Job
-   deploy:
-     needs: build-and-push # Only run if the builds succeed
-     runs-on: ubuntu-latest
-     steps:
-       - name: Checkout Code
-         uses: actions/checkout@v4
-
-       - name: Copy Config to Server
-         uses: appleboy/scp-action@v0.1.7
-         with:
-           host: ${{ secrets.SERVER_HOST }}
-           username: ${{ secrets.SERVER_USER }}
-           key: ${{ secrets.SERVER_SSH_KEY }}
-           source: "prod.yaml" # File to copy
-           target: "~/apps/my-project/" # Folder on your server
-
-       - name: SSH and Restart Containers
-         uses: appleboy/ssh-action@v1.0.3
-         with:
-           host: ${{ secrets.SERVER_HOST }}
-           username: ${{ secrets.SERVER_USER }}
-           key: ${{ secrets.SERVER_SSH_KEY }}
-           script: |
-             # Navigate to the project folder
-             cd ~/apps/my-project/
-
-             # Pull the latest images pushed in the previous job
-             docker compose -f prod.yaml pull
-
-             # Restart the services in detached mode
-             docker compose -f prod.yaml up -d
-
-             # (Optional) Clean up unused images to save disk space
-             docker image prune -f
-    "#;
+            add_git_acctions(&project_dir, &file_name)?;
         }
         var if var == "h" => {
             println!("valid options are: setup, sql, one_sql, sql_crate, post, minio, pub_struct");
