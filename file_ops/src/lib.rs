@@ -3,6 +3,14 @@ use std::io::{LineWriter, Write};
 use std::path::PathBuf;
 use std::{fs, io};
 
+pub fn create_folder(path: &std::path::Path) -> Result<(), io::Error> {
+    match fs::create_dir_all(path) {
+        Ok(_) => {}
+        Err(e) => println!("error creating file in create_folder file ops: {}", e),
+    }
+    Ok(())
+}
+
 pub fn append_to_file(path: &std::path::Path, text: &str) -> Result<(), io::Error> {
     let mut file = OpenOptions::new().create(true).append(true).open(path)?;
     file.write_all(text.as_bytes())?;

@@ -2,11 +2,6 @@ use file_ops::append_to_file;
 use std::io;
 
 pub fn add_top_boilerplate(file_path: &std::path::Path) -> Result<(), io::Error> {
-    // Ensure parent directories exist
-    if let Some(parent) = file_path.parent() {
-        std::fs::create_dir_all(parent)?;
-    }
-
     let top_boiler = r###"
 use axum::{
     extract::{self, Path, Query},
@@ -79,7 +74,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     }};
 
     let static_service =
-        ServeDir::new("frontend/build").not_found_service(service_fn(|_req| async {{
+        ServeDir::new("../frontend/build").not_found_service(service_fn(|_req| async {{
             match tokio::fs::read_to_string("frontend/build/index.html").await {{
                 Ok(body) => Ok((StatusCode::OK, Html(body)).into_response()),
                 Err(err) => Ok((

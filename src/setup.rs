@@ -4,6 +4,7 @@ use crate::add_top_boilerplate;
 use crate::create_react_app;
 use crate::gen_docker::gen_docker;
 use crate::gen_toml;
+use file_ops::create_folder;
 use std::net::{SocketAddr, TcpListener};
 use std::path::Path;
 use std::process::Command;
@@ -11,15 +12,23 @@ use std::process::Command;
 pub fn setup(parent_dir: &Path, file_name: &str) -> Result<(), std::io::Error> {
     let project_dir = parent_dir.join(file_name);
 
-    let path = project_dir.join("src/main.rs");
+    let backend_path = project_dir.join("backend");
+    println!("backend path is: {}", backend_path.display());
 
     println!("parent in setup {} ", parent_dir.display());
     println!("prooject dir in stup: {} ", project_dir.display());
+    match create_folder(&project_dir) {
+        Ok(_) => {}
+        Err(e) => println!(
+            "there was an error createing the folder for the project: {}",
+            e
+        ),
+    }
 
     let output = Command::new("cargo")
-        .current_dir(parent_dir)
+        .current_dir(&project_dir)
         .arg("new")
-        .arg(file_name)
+        .arg("backend")
         .output()?;
 
     if !output.status.success() {
@@ -35,13 +44,13 @@ pub fn setup(parent_dir: &Path, file_name: &str) -> Result<(), std::io::Error> {
 
     //this is likly the os problem
 
-    let gen_toml_res = gen_toml::gen_toml(&parent_dir.join(file_name));
+    let gen_toml_res = gen_toml::gen_toml(&backend_path);
     match gen_toml_res {
         Ok(_) => println!("Successfully generated TOML"),
         Err(e) => eprintln!("Failed to generate TOML: {}", e),
     };
 
-    add_top_boilerplate(&path)?;
+    add_top_boilerplate(&project_dir.join("backend/src/main.rs"))?;
 
     // let end_res = add_axum_end(func_names.clone(), &path);
     // TODO: this looks like a dublicat of the add_minio function
@@ -77,7 +86,7 @@ pub fn setup(parent_dir: &Path, file_name: &str) -> Result<(), std::io::Error> {
                 .to_str()
                 .unwrap(),
     );
-    let end_res = add_axum_end(Vec::new(), &project_dir.join("src/main.rs"));
+    let end_res = add_axum_end(Vec::new(), &backend_path.join("src/main.rs"));
     match end_res {
         Ok(_) => println!("end added"),
         Err(e) => println!("error adding end: {}", e),

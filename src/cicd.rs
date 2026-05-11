@@ -47,7 +47,7 @@ gh secret set DOCKERHUB_TOKEN
          include:
            - service: {proj_name}_frontend
              context: ./frontend      # Path to your frontend folder
-           - service: {proj_name}_backend
+           - service: {proj_name}-app # backend is app
              context: .               # Path to your backend folder
            - service: {proj_name}_python
              context: ./fastapi-template

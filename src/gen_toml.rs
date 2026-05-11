@@ -4,7 +4,7 @@ use file_ops::append_to_file;
 
 pub fn gen_toml(project_dir: &std::path::Path) -> Result<(), io::Error> {
     let deps = "
-    axum = { version = \"0.7\", features = [\"macros\"] }
+axum = { version = \"0.7\", features = [\"macros\"] }
 tokio = { version = \"1\", features = [\"full\", \"time\"] }
 serde = { version = \"1\", features = [\"derive\"] }
 serde_json = \"1\"
