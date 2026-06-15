@@ -1,7 +1,7 @@
 use std::process::Command;
 
 pub fn gen_sql_crate(project_dir: &std::path::Path) -> Result<(), std::io::Error> {
-    let sql_path = project_dir.join("migrations/0001_data.sql");
+    let sql_path = project_dir.join("../migrations/0001_data.sql");
     // Clean up any existing container with the same name
     let _ = Command::new("docker")
         .args(["rm", "-f", "sql_gen_con"])
