@@ -4,7 +4,7 @@ use std::process::{Command, Stdio};
 
 pub fn add_pub(path: &std::path::Path) -> Result<(), std::io::Error> {
     let file_names = Command::new("ls")
-        .args(["src/models"])
+        .args(["backend/src/models"])
         .stdout(Stdio::piped())
         .output()
         .unwrap();

@@ -121,7 +121,7 @@ async fn main() -> Result<(), std::io::Error> {
             }
         }
         var if var == "pub_struct" => {
-            add_pub(&project_dir.join("src/models"))?;
+            add_pub(&project_dir.join("backend/src/models"))?;
         }
         var if var == "cicd" => {
             add_git_acctions(&project_dir, &file_name)?;
