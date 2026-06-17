@@ -1,5 +1,6 @@
 use convert_case::{Case, Casing};
 use file_ops::{append_to_file, prepend_line_to_file};
+use std::path::Path;
 
 struct SqlMetadata {
     sql_struct: String,
@@ -9,16 +10,17 @@ struct SqlMetadata {
 
 fn get_sql_metadata() -> SqlMetadata {
     let mut sql_struct = String::new();
-    println!("what table do you want to use"); // should give user list to pick from
     io::stdin()
         .read_line(&mut sql_struct)
         .expect("error reading from std in");
     sql_struct = sql_struct.trim_end().to_string();
     let capitalized_struct = sql_struct.to_case(Case::Pascal);
-    let file_path = format!("src/models/{}.rs", sql_struct.trim());
+    let file_path = format!("backend/src/models/{}.rs", sql_struct.trim());
     // read file
-    let sql_bytes = fs::read(file_path).expect("that was not a valid file / sql struct");
-    let sql = String::from_utf8(sql_bytes).expect("file contains invalid UTF-8");
+    let path_type = Path::new(&file_path);
+    let temp = path_type.display();
+
+    let sql = fs::read_to_string(path_type).expect("that was not a valid file / sql struct");
 
     SqlMetadata {
         sql_struct,
@@ -194,7 +196,7 @@ pub async fn post_{sql_struct}(
 }}
 "###
     );
-    let file_path = std::env::current_dir()?.join("src/main.rs");
+    let file_path = std::env::current_dir()?.join("backend/src/main.rs");
 
     append_to_file(&file_path, &data_func)?;
     prepend_line_to_file(&file_path, "mod models;")?;
