@@ -1,5 +1,6 @@
 use file_ops::append_to_file;
-use std::io;
+
+use std::{fs, io};
 
 pub fn add_top_boilerplate(file_path: &std::path::Path) -> Result<(), io::Error> {
     let top_boiler = r###"
@@ -30,7 +31,7 @@ use tower_http::services::ServeDir;
 
 
 "###;
-    append_to_file(file_path, top_boiler)?;
+    fs::write(file_path, top_boiler)?;
     Ok(())
 }
 

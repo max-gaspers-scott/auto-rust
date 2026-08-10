@@ -1,4 +1,5 @@
 mod add_compose;
+use std::path::Path;
 mod cicd;
 mod fix_structs;
 mod gen_docker;
@@ -36,13 +37,19 @@ use std::io;
 struct Args {
     #[arg(short, long)]
     what_to_make: String,
+    #[arg(short, long)]
+    name: String,
+    #[arg(short, long, default_value_t = String::from("no_sql"))]
+    sql: String,
 }
 
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
-    let mut file_name = String::new();
-    println!("Enter project name: ");
-    io::stdin().read_line(&mut file_name)?;
+    let args = Args::parse();
+    let mut file_name = args.name;
+    // println!("Enter project name: ");
+    // io::stdin().read_line(&mut file_name)?;
+
     let file_name = file_name.trim().to_string();
     let file_name = if file_name.is_empty() {
         std::env::current_dir()?.display().to_string()
@@ -50,18 +57,11 @@ async fn main() -> Result<(), std::io::Error> {
         file_name
     };
 
-    let parent_dir = std::env::current_dir()?
-        .parent()
-        .ok_or_else(|| std::io::Error::other("Cannot get parent directory"))?
-        .to_path_buf();
-
-    let project_dir = parent_dir.join(&file_name);
+    let project_dir = Path::new(&file_name);
     println!("Project directory: {}", project_dir.display());
-    println!("Parent directory: {}", parent_dir.display());
-    let args = Args::parse();
 
     match args.what_to_make {
-        val if val == "setup" => match setup::setup(&parent_dir, &file_name) {
+        val if val == "setup" => match setup::setup(&project_dir) {
             Ok(_) => {
                 println!("setup_res successful");
             }
@@ -70,11 +70,12 @@ async fn main() -> Result<(), std::io::Error> {
             }
         },
         val if val == "sql" => {
-            let mut sql_task = String::new();
-            println!(
-                "Enter the specific task for the SQL database (e.g., 'make SQL to store users and their favored food'): "
-            );
-            io::stdin().read_line(&mut sql_task)?;
+            // let mut sql_task = String::new();
+
+            let mut sql_task = args.sql; // println!(
+            //     "Enter the specific task for the SQL database (e.g., 'make SQL to store users and their favored food'): "
+            // );
+            // io::stdin().read_line(&mut sql_task)?;
 
             let sql_task = if sql_task.trim().to_string().is_empty() {
                 String::from(
@@ -85,7 +86,7 @@ async fn main() -> Result<(), std::io::Error> {
             };
 
             // Generate SQL and create necessary files
-            match gen_sql(project_dir.clone(), sql_task.clone(), false).await {
+            match gen_sql(project_dir.join("backend"), sql_task.clone(), false).await {
                 Ok(content) => {
                     println!("Successfully generated SQL ({} bytes)", content.len());
                 }
@@ -123,9 +124,9 @@ async fn main() -> Result<(), std::io::Error> {
         var if var == "pub_struct" => {
             add_pub(&project_dir.join("backend/src/models"))?;
         }
-        var if var == "cicd" => {
-            add_git_acctions(&project_dir, &file_name)?;
-        }
+        // var if var == "cicd" => {
+        //     add_git_acctions(&project_dir, &file_name)?;
+        // }
         var if var == "h" => {
             println!("valid options are: setup, sql, one_sql, sql_crate, post, minio, pub_struct");
         }

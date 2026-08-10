@@ -9,13 +9,10 @@ use std::net::{SocketAddr, TcpListener};
 use std::path::Path;
 use std::process::Command;
 
-pub fn setup(parent_dir: &Path, file_name: &str) -> Result<(), std::io::Error> {
-    let project_dir = parent_dir.join(file_name);
-
+pub fn setup(project_dir: &Path) -> Result<(), std::io::Error> {
     let backend_path = project_dir.join("backend");
     println!("backend path is: {}", backend_path.display());
 
-    println!("parent in setup {} ", parent_dir.display());
     println!("prooject dir in stup: {} ", project_dir.display());
     match create_folder(&project_dir) {
         Ok(_) => {}
@@ -55,7 +52,10 @@ pub fn setup(parent_dir: &Path, file_name: &str) -> Result<(), std::io::Error> {
     // let end_res = add_axum_end(func_names.clone(), &path);
     // TODO: this looks like a dublicat of the add_minio function
     // add_object(&path);
-    let docker_res = gen_docker(&project_dir.join("Dockerfile"), file_name);
+    let docker_res = gen_docker(
+        &project_dir.join("Dockerfile"),
+        &project_dir.to_string_lossy(),
+    );
     match docker_res {
         Ok(_) => println!(
             "Dockerfile created at {}",

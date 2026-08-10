@@ -21,7 +21,7 @@ RUN apt-get update \
 WORKDIR /app
 
 # Cache dependencies first – copy manifest files only
-COPY Cargo.toml Cargo.lock ./
+COPY backend/Cargo.toml backend/Cargo.lock ./
 
 # Set the default toolchain to nightly
 RUN rustup default nightly
