@@ -5,22 +5,15 @@ use crate::create_react_app;
 use crate::gen_docker::gen_docker;
 use crate::gen_toml;
 use file_ops::create_folder;
+use std::env::current_dir;
 use std::net::{SocketAddr, TcpListener};
 use std::path::Path;
 use std::process::Command;
 
-pub fn setup(project_dir: &Path) -> Result<(), std::io::Error> {
+pub fn setup() -> Result<(), std::io::Error> {
+    let project_dir = current_dir().unwrap();
     let backend_path = project_dir.join("backend");
     println!("backend path is: {}", backend_path.display());
-
-    println!("prooject dir in stup: {} ", project_dir.display());
-    match create_folder(&project_dir) {
-        Ok(_) => {}
-        Err(e) => println!(
-            "there was an error createing the folder for the project: {}",
-            e
-        ),
-    }
 
     let output = Command::new("cargo")
         .current_dir(&project_dir)
