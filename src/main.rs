@@ -38,6 +38,8 @@ pub struct Args {
     sql: String,
     #[arg(short, long, default_value_t = String::from("no_table_name"))]
     dto_name: String,
+    #[arg(short, long, default_value_t = String::from("no_return_fields"))]
+    retun_fields: String,
 }
 
 #[tokio::main]
@@ -85,7 +87,7 @@ async fn main() -> Result<(), std::io::Error> {
                 Err(e) => print!("python error: {e}"),
             }
         }
-        var if var == "get_endpoint" => match add_one_sql_funk(args.dto_name) {
+        var if var == "get_endpoint" => match add_one_sql_funk(args.dto_name, args.retun_fields) {
             Ok(_) => (),
             Err(e) => println!("sql gen error: {e}"),
         },
