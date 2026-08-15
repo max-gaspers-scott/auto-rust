@@ -1,13 +1,10 @@
-use crate::add_axum_end;
-use crate::add_compose;
-use crate::add_top_boilerplate;
-use crate::create_react_app;
+use crate::boilerplate::{add_axum_end, add_top_boilerplate};
+use crate::add_compose::add_compose;
+use crate::add_react::create_react_app;
 use crate::gen_docker::gen_docker;
 use crate::gen_toml;
-use file_ops::create_folder;
 use std::env::current_dir;
 use std::net::{SocketAddr, TcpListener};
-use std::path::Path;
 use std::process::Command;
 
 pub fn setup() -> Result<(), std::io::Error> {
