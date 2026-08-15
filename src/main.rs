@@ -1,4 +1,5 @@
 mod add_compose;
+use std::{env::current_dir, path::Path};
 mod cicd;
 mod fix_structs;
 mod gen_docker;
@@ -24,44 +25,31 @@ use add_minio::add_minio;
 use add_one_sql_funk::{add_one_post, add_one_sql_funk};
 use add_python::add_python_func;
 use add_react::create_react_app;
-// pub use base_structs::{Row, create_type_map};
 use boilerplate::{add_axum_end, add_top_boilerplate};
 use gen_sql::gen_sql;
 use std::io;
 
-// This function is now in base_structs.rs
-
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
-struct Args {
+pub struct Args {
     #[arg(short, long)]
     what_to_make: String,
+    #[arg(short, long, default_value_t = String::from("no_sql"))]
+    sql: String,
+    #[arg(short, long, default_value_t = String::from("no_table_name"))]
+    dto_name: String,
+    #[arg(short, long, default_value_t = String::from("no_return_fields"))]
+    retun_fields: String,
 }
 
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
-    let mut file_name = String::new();
-    println!("Enter project name: ");
-    io::stdin().read_line(&mut file_name)?;
-    let file_name = file_name.trim().to_string();
-    let file_name = if file_name.is_empty() {
-        std::env::current_dir()?.display().to_string()
-    } else {
-        file_name
-    };
-
-    let parent_dir = std::env::current_dir()?
-        .parent()
-        .ok_or_else(|| std::io::Error::other("Cannot get parent directory"))?
-        .to_path_buf();
-
-    let project_dir = parent_dir.join(&file_name);
-    println!("Project directory: {}", project_dir.display());
-    println!("Parent directory: {}", parent_dir.display());
     let args = Args::parse();
+    let project_dir = current_dir().unwrap();
+    println!("Project directory: {}", project_dir.display());
 
     match args.what_to_make {
-        val if val == "setup" => match setup::setup(&parent_dir, &file_name) {
+        val if val == "setup" => match setup::setup() {
             Ok(_) => {
                 println!("setup_res successful");
             }
@@ -70,11 +58,9 @@ async fn main() -> Result<(), std::io::Error> {
             }
         },
         val if val == "sql" => {
-            let mut sql_task = String::new();
-            println!(
-                "Enter the specific task for the SQL database (e.g., 'make SQL to store users and their favored food'): "
-            );
-            io::stdin().read_line(&mut sql_task)?;
+            // let mut sql_task = String::new();
+
+            let mut sql_task = args.sql;
 
             let sql_task = if sql_task.trim().to_string().is_empty() {
                 String::from(
@@ -85,7 +71,7 @@ async fn main() -> Result<(), std::io::Error> {
             };
 
             // Generate SQL and create necessary files
-            match gen_sql(project_dir.clone(), sql_task.clone(), false).await {
+            match gen_sql(sql_task.clone(), false).await {
                 Ok(content) => {
                     println!("Successfully generated SQL ({} bytes)", content.len());
                 }
@@ -101,20 +87,21 @@ async fn main() -> Result<(), std::io::Error> {
                 Err(e) => print!("python error: {e}"),
             }
         }
-        var if var == "one_sql" => match add_one_sql_funk() {
+        var if var == "get_endpoint" => match add_one_sql_funk(args.dto_name, args.retun_fields) {
             Ok(_) => (),
             Err(e) => println!("sql gen error: {e}"),
         },
-        var if var == "sql_crate" => match gen_sql_crate(&project_dir) {
+        var if var == "sql_crate" => match gen_sql_crate() {
             Ok(_) => (),
             Err(e) => print!("gen sql error : {e}"),
         },
-        var if var == "post" => match add_one_post() {
+        var if var == "post" => match add_one_post(args.dto_name) {
             Ok(_) => (),
             Err(e) => println!("post error: {e}"),
         },
         var if var == "minio" => {
             let path = project_dir.join("src/main.rs");
+            println!("{}", path.display());
             match add_minio(&path) {
                 Ok(_) => (),
                 Err(e) => println!("minio error: {e}"),
@@ -123,14 +110,18 @@ async fn main() -> Result<(), std::io::Error> {
         var if var == "pub_struct" => {
             add_pub(&project_dir.join("backend/src/models"))?;
         }
-        var if var == "cicd" => {
-            add_git_acctions(&project_dir, &file_name)?;
-        }
+        // var if var == "cicd" => {
+        //     add_git_acctions(&project_dir, &file_name)?;
+        // }
         var if var == "h" => {
-            println!("valid options are: setup, sql, one_sql, sql_crate, post, minio, pub_struct");
+            println!(
+                "valid options are: setup, sql, get_endpoint, sql_crate, post, minio, pub_struct"
+            );
         }
 
-        _ => println!("valid options are: setup, sql, one_sql, sql_crate, post, minio, pub_struct"),
+        _ => println!(
+            "valid options are: setup, sql, get_endpoint, sql_crate, post, minio, pub_struct"
+        ),
     }
     Ok(())
 }

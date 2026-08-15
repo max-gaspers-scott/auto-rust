@@ -1,7 +1,11 @@
-use std::process::Command;
+use std::{
+    env::{current_dir, current_exe},
+    process::Command,
+};
 
-pub fn gen_sql_crate(project_dir: &std::path::Path) -> Result<(), std::io::Error> {
-    let sql_path = project_dir.join("../migrations/0001_data.sql");
+pub fn gen_sql_crate() -> Result<(), std::io::Error> {
+    let back_dir = current_dir().unwrap().join("backend");
+    let sql_path = back_dir.join("migrations/0001_data.sql");
     // Clean up any existing container with the same name
     let _ = Command::new("docker")
         .args(["rm", "-f", "sql_gen_con"])
@@ -75,8 +79,7 @@ pub fn gen_sql_crate(project_dir: &std::path::Path) -> Result<(), std::io::Error
             }
         }
     }
-
-    let copy_res = Command::new("docker")
+    Command::new("docker")
         .args([
             "cp",
             sql_path.to_str().expect("failed to get sql path"),
@@ -97,36 +100,9 @@ pub fn gen_sql_crate(project_dir: &std::path::Path) -> Result<(), std::io::Error
             &format!("/{}", sql_path.file_name().unwrap().to_str().unwrap()),
         ])
         .status()?;
-    //
-    // let install_res = Command::new("cargo")
-    //     .args(["install", "sql-gen"])
-    //     .status()?;
-    //
-    // println!("cargo install gsl gen status: {}", install_res);
-
     // TODO: this assumes that sql-gen is installed witch is bad. Find a fix
     // TODO: breaks if port already alocated for the docker containers that need to be set up
-    let gen_sql_status = Command::new("sql-gen")
-        .args([
-            "--db-url",
-            "postgres://postgres:secret@localhost:12345/sql_gen_con",
-            "--output",
-            "/src/models/",
-        ])
-        .status()?;
 
-    println!("gen sql res: {}", gen_sql_status);
-
-    let models_path = project_dir.join("src/");
-    let move_res = Command::new("mv")
-        .args([
-            "/src/models/",
-            models_path.file_name().unwrap().to_str().unwrap(),
-        ])
-        .status()?;
-
-    println!("the move: {}", move_res);
-    // Additional wait and verification before sql-gen to ensure database is fully ready
     println!("Waiting for database to be fully ready...");
     let mut db_attempts = 0;
     let max_db_attempts = 10;
@@ -162,12 +138,8 @@ pub fn gen_sql_crate(project_dir: &std::path::Path) -> Result<(), std::io::Error
             "--db-url",
             "postgres://postgres:secret@localhost:12345/postgres",
             "--output",
-            "src/models/",
+            "backend/src/models/",
         ])
         .status()?;
-
-    println!("status of generation sql: {}", gen_sql_status);
-
-    println!("res of copy to docker: {}", copy_res);
     Ok(())
 }

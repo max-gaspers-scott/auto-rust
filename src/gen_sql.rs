@@ -1,4 +1,5 @@
 use std::{
+    env::current_dir,
     fs::{self, File},
     io::Write,
 };
@@ -9,10 +10,10 @@ use serde::{Deserialize, Serialize};
 use std::env;
 
 pub async fn gen_sql(
-    project_dir: std::path::PathBuf,
     sql_task: String,
     is_test: bool,
 ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    let project_dir = current_dir().unwrap();
     let migrations_dir = project_dir.join("migrations");
     // Create parent directories
     println!("Creating directory: {}", migrations_dir.display());

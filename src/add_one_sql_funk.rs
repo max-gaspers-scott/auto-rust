@@ -1,5 +1,6 @@
 use convert_case::{Case, Casing};
 use file_ops::{append_to_file, prepend_line_to_file};
+use std::env::current_dir;
 use std::path::Path;
 
 struct SqlMetadata {
@@ -8,12 +9,8 @@ struct SqlMetadata {
     sql: String, // should be path buf??
 }
 
-fn get_sql_metadata() -> SqlMetadata {
-    let mut sql_struct = String::new();
-    io::stdin()
-        .read_line(&mut sql_struct)
-        .expect("error reading from std in");
-    sql_struct = sql_struct.trim_end().to_string();
+fn get_sql_metadata(dto_name: String) -> SqlMetadata {
+    let sql_struct = dto_name.trim_end().to_string();
     let capitalized_struct = sql_struct.to_case(Case::Pascal);
     let file_path = format!("backend/src/models/{}.rs", sql_struct.trim());
     // read file
@@ -30,8 +27,8 @@ fn get_sql_metadata() -> SqlMetadata {
 }
 
 use std::{fs, io};
-pub fn add_one_sql_funk() -> Result<(), std::io::Error> {
-    let sql_metadata = get_sql_metadata();
+pub fn add_one_sql_funk(dto_name: String, retun_fields: String) -> Result<(), std::io::Error> {
+    let sql_metadata = get_sql_metadata(dto_name);
     // split on lines and get third row (index 2)
     let lines: Vec<&str> = sql_metadata.sql.lines().collect();
     let struct_type = if lines.len() > 2 {
@@ -49,12 +46,7 @@ pub fn add_one_sql_funk() -> Result<(), std::io::Error> {
     };
 
     // ask about what colums to return
-    println!("enter colums do you want to be returned. seperte with spaces");
-    let mut return_cols = String::new();
-    io::stdin()
-        .read_line(&mut return_cols)
-        .expect("error reading from std in");
-    return_cols = return_cols.trim_end().to_string();
+    let return_cols = retun_fields.trim_end().to_string();
     let return_underscors = return_cols.replace(" ", "_");
     // ask what colum to match on
     println!("what colum do you want to match (the select ___ part");
@@ -116,14 +108,14 @@ async fn get_{return_underscors}_{match_col}(
     println!("rust: {}", rust);
     println!("query stuct name: {}", query_struct_name);
 
-    let file_path = std::env::current_dir()?.join("src/main.rs");
+    let file_path = current_dir()?.join("backend/src/main.rs");
     append_to_file(&file_path, &rust)?;
 
     Ok(())
 }
 
-pub fn add_one_post() -> Result<(), std::io::Error> {
-    let sql_metadata = get_sql_metadata();
+pub fn add_one_post(dto_name: String) -> Result<(), std::io::Error> {
+    let sql_metadata = get_sql_metadata(dto_name);
     let all_lines: Vec<&str> = sql_metadata.sql.lines().collect();
     let len = all_lines.len();
     if len < 4 {

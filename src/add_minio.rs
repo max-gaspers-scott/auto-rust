@@ -3,9 +3,9 @@ use std::io::{self};
 
 pub fn add_minio(file_path: &std::path::Path) -> Result<(), io::Error> {
     // Ensure parent directories exist
-    if let Some(parent) = file_path.parent() {
-        std::fs::create_dir_all(parent)?;
-    }
+    // if let Some(parent) = file_path.parent() {
+    //     std::fs::create_dir_all(parent)?;
+    // }
     let top_of_file = r###"
   use minio_rsc::Minio;
   use minio_rsc::client::PresignedArgs;
@@ -65,7 +65,7 @@ async fn get_fetch_url(id: String) -> String {
               .expires(3600),
       )
       .await?
-    }
+}
 "###;
 
     append_to_file(file_path, funk_str)

@@ -12,8 +12,8 @@ services:
       POSTGRES_USER: dbuser
       POSTGRES_PASSWORD: p
       POSTGRES_DB: data
-    # ports:
-      # - \"1111:5432\"
+     ports:
+       - \"1111:5432\"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -73,19 +73,6 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
-
-  python:
-    build:
-      context: ./fastapi-template
-    depends_on:
-      - app
-    healthcheck:
-      test: [\"CMD\", \"wget\", \"--spider\", \"http://localhost:8003/health\"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-
 volumes:
   postgres_data:
   minio_data:
@@ -106,3 +93,16 @@ volumes:
 }
 
 // docker build -t pangolin-testing .
+//
+// python:
+//   build:
+//     context: ./fastapi-template
+//   depends_on:
+//     - app
+//   healthcheck:
+//     test: [\"CMD\", \"wget\", \"--spider\", \"http://localhost:8003/health\"]
+//     interval: 10s
+//     timeout: 5s
+//     retries: 5
+//     start_period: 30s
+//
