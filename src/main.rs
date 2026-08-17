@@ -1,5 +1,6 @@
 mod add_compose;
 mod models;
+use auto_rust::request_ai;
 use models::*;
 use std::{env::current_dir, path::Path};
 mod add_fastapi;
@@ -58,18 +59,25 @@ enum Commands {
         dto_name: String,
     },
     PubStruct,
+    Login,
 }
-// #[arg(short, long, default_value_t = String::from("no_table_name"))]
-// dto_name: String,
-// #[arg(short, long, default_value_t = String::from("no_return_fields"))]
-// fields_to_return: String,
-// field_to_filtter: Option<String>,
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
     let args = Args::parse();
+    //TODO: make andelrs be all in there own folder/file. be able to call handelr::setup insted of
+    //setup::setup
     let a = match args.command {
         Commands::Setup => setup::setup(),
-        Commands::Sql { sql } => gen_sql("hi".to_string(), false),
+        Commands::Sql { sql } => gen_sql(sql, request_ai::gemini_for_sql),
+        Commands::GetEndpoint {
+            dto_name,
+            fields_to_return,
+            field_to_filtter,
+        } => add_one_sql_funk(HandelerMetaData {
+            name: dto_name,
+            fields_to_retrun: fields_to_return,
+            field_to_filtter: field_to_filtter,
+        }),
         _ => add_pub(),
     };
 

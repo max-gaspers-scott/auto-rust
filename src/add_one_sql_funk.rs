@@ -31,7 +31,9 @@ fn get_sql_metadata(dto_name: String) -> SqlMetadata {
 
 use std::{fs, io};
 
-pub fn add_one_sql_funk(handelr_data: HandelerMetaData) -> Result<(), std::io::Error> {
+pub fn add_one_sql_funk(
+    handelr_data: HandelerMetaData,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let sql_metadata = get_sql_metadata(handelr_data.name);
     // split on lines and get third row (index 2)
     let lines: Vec<&str> = sql_metadata.sql.lines().collect();
