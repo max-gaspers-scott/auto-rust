@@ -1,4 +1,7 @@
 use convert_case::{Case, Casing};
+
+use crate::models::handeler_meta_data::*;
+
 use file_ops::{append_to_file, prepend_line_to_file};
 use std::env::current_dir;
 use std::path::Path;
@@ -28,9 +31,8 @@ fn get_sql_metadata(dto_name: String) -> SqlMetadata {
 
 use std::{fs, io};
 
-use crate::HandelerMetaData;
 pub fn add_one_sql_funk(handelr_data: HandelerMetaData) -> Result<(), std::io::Error> {
-    let sql_metadata = get_sql_metadata(handelr_data.dto_name);
+    let sql_metadata = get_sql_metadata(handelr_data.name);
     // split on lines and get third row (index 2)
     let lines: Vec<&str> = sql_metadata.sql.lines().collect();
     let struct_type = if lines.len() > 2 {
@@ -48,7 +50,7 @@ pub fn add_one_sql_funk(handelr_data: HandelerMetaData) -> Result<(), std::io::E
     };
 
     // ask about what colums to return
-    let return_cols = retun_fields.trim_end().to_string();
+    let return_cols = handelr_data.fields_to_retrun.trim_end().to_string();
     let return_underscors = return_cols.replace(" ", "_");
     // ask what colum to match on
     println!("what colum do you want to match (the select ___ part");

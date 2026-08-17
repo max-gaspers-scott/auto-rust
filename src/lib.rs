@@ -12,4 +12,5 @@ pub mod gen_sql;
 pub mod gen_sql_crate;
 pub mod gen_toml;
 // pub mod generated_struct;  // Has compilation errors, not needed for platform extension
+pub mod models;
 pub mod setup;

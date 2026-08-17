@@ -14,7 +14,12 @@ sqlx = "0.8.5"
 # ollama-rs = { version = "0.3.1", features = ["stream", "macros"] }
 tokio = { version = "1.45.1", features = ["macros", "rt-multi-thread"] }
 schemars = { version = "0.8", features = ["derive"] }
-reqwest = { version = "0.12", features = ["json", "gzip", "rustls-tls"] }
+reqwest = { version = "0.12", features = [
+  "json",
+  "gzip",
+  "rustls-tls",
+  "blocking",
+] }
 tempfile = "3.10.1"
 
 crud_macros = { path = "./crud_macros" }

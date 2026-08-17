@@ -9,12 +9,12 @@ use reqwest::header::{ACCEPT, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
 use std::env;
 
-pub async fn gen_sql(
+pub fn gen_sql(
     sql_task: String,
     is_test: bool,
-) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let project_dir = current_dir().unwrap();
-    let migrations_dir = project_dir.join("backend/migrations");
+    let migrations_dir = project_dir.join("migrations");
     // Create parent directories
     println!("Creating directory: {}", migrations_dir.display());
     fs::create_dir_all(&migrations_dir).map_err(|e| {
@@ -49,7 +49,7 @@ pub async fn gen_sql(
             e
         })?;
 
-        return Ok("success".to_string());
+        return Ok(());
     };
     println!("made it to befor dotenv");
 
@@ -175,7 +175,7 @@ pub async fn gen_sql(
         }],
     };
 
-    let client = reqwest::Client::new();
+    let client = reqwest::blocking::Client::new();
     let response = client
         .post(&url)
         .header(CONTENT_TYPE, "application/json")
@@ -183,12 +183,11 @@ pub async fn gen_sql(
         // reqwest::Client::post() automatically uses the body's Serialize implementation
         // and sets the Content-Length header when sending the request body.
         .json(&request_body)
-        .send()
-        .await?;
+        .send()?;
 
     let sql = if response.status().is_success() {
         // Deserialize the JSON response into our Rust struct
-        let json_response: GeminiRespons = response.json().await?;
+        let json_response: GeminiRespons = response.json()?;
 
         // TODO: should not return "" insted do better error handeling
         // program should not continue with empty string is somthing goes wrong at this step
@@ -206,7 +205,7 @@ pub async fn gen_sql(
     } else {
         eprintln!("\n❌ API Request Failed!");
         eprintln!("Status: {}", response.status());
-        eprintln!("Body: {}", response.text().await?);
+        eprintln!("Body: {}", response.text()?);
         "".to_string()
     };
 
@@ -222,5 +221,5 @@ pub async fn gen_sql(
         eprintln!("Error writing to file: {}", e);
         e
     })?;
-    Ok("success".to_string())
+    Ok(())
 }

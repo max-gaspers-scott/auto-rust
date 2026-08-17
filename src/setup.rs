@@ -1,13 +1,13 @@
-use crate::boilerplate::{add_axum_end, add_top_boilerplate};
 use crate::add_compose::add_compose;
 use crate::add_react::create_react_app;
+use crate::boilerplate::{add_axum_end, add_top_boilerplate};
 use crate::gen_docker::gen_docker;
 use crate::gen_toml;
 use std::env::current_dir;
 use std::net::{SocketAddr, TcpListener};
 use std::process::Command;
 
-pub fn setup() -> Result<(), std::io::Error> {
+pub fn setup() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let project_dir = current_dir().unwrap();
     let backend_path = project_dir.join("backend");
     println!("backend path is: {}", backend_path.display());
