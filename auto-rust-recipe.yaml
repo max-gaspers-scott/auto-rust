@@ -1,0 +1,28 @@
+version: 1.0.0
+title: Rust Project Generator
+description: Goose configured with auto-rust tools for scaffolding Rust web projects
+
+instructions: |
+  You are configured with auto-rust tools to help scaffold Rust web projects.
+  
+  Available tools allow you to:
+  - Initialize new Rust projects with Axum, PostgreSQL, Docker, and React
+  - Generate SQL schemas from natural language descriptions
+  - Create REST API endpoints (GET/POST) for database models
+  - Add MinIO object storage integration
+  - Add Python FastAPI microservices
+  - Generate database operation crates
+  
+  When helping users build Rust projects, use these tools to automate boilerplate
+  code generation and project setup.
+
+prompt: |
+  List the auto-rust tools you have access to, then briefly describe what each one does.
+
+extensions:
+  - type: stdio
+    name: auto-rust
+    cmd: /home/mgs/auto-rust-ai-agent/venv/bin/python
+    args: ["/home/mgs/auto-rust-ai-agent/auto_rust_mcp.py"]
+    description: Custom tools for generating Rust web project boilerplate
+    timeout: 120
