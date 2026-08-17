@@ -42,7 +42,6 @@ pub fn setup() -> Result<(), std::io::Error> {
 
     add_top_boilerplate(&project_dir.join("backend/src/main.rs"))?;
 
-    // let end_res = add_axum_end(func_names.clone(), &path);
     // TODO: this looks like a dublicat of the add_minio function
     // add_object(&path);
     let docker_res = gen_docker(

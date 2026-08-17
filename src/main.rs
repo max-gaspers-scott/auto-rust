@@ -39,17 +39,42 @@ pub struct Args {
     #[arg(short, long, default_value_t = String::from("no_table_name"))]
     dto_name: String,
     #[arg(short, long, default_value_t = String::from("no_return_fields"))]
-    retun_fields: String,
+    fields_to_return: String,
+    field_to_filtter: Option<String>,
+}
+
+pub struct HandelerMetaData {
+    name: String,
+    fields_to_retrun: Vec<String>,
+    field_to_filtter: Option<String>,
+}
+
+#[derive(Clone)]
+enum Options {
+    Setup,
+    Sql,
+    GetEndpoint,
+    Post,
+    PubStruct,
+}
+
+fn to_option(string_param: String) -> Options {
+    match string_param {
+        String::from("setup") => Options::Setup,
+        _ => Options::Sql,
+    }
 }
 
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
     let args = Args::parse();
-    let project_dir = current_dir().unwrap();
+    let option = args.what_to_make;
+    let option = to_option(option);
+    let project_dir = current_dir().expect("could not get current dir");
     println!("Project directory: {}", project_dir.display());
 
     match args.what_to_make {
-        val if val == "setup" => match setup::setup() {
+        var if var == "setup" => match setup::setup() {
             Ok(_) => {
                 println!("setup_res successful");
             }
@@ -57,7 +82,7 @@ async fn main() -> Result<(), std::io::Error> {
                 println!("setup_res error: {}", e);
             }
         },
-        val if val == "sql" => {
+        var if var == "sql" => {
             // let mut sql_task = String::new();
 
             let mut sql_task = args.sql;
@@ -87,10 +112,18 @@ async fn main() -> Result<(), std::io::Error> {
                 Err(e) => print!("python error: {e}"),
             }
         }
-        var if var == "get_endpoint" => match add_one_sql_funk(args.dto_name, args.retun_fields) {
-            Ok(_) => (),
-            Err(e) => println!("sql gen error: {e}"),
-        },
+
+        var if var == "get_endpoint" => {
+            let handle_data = HandelerMetaData {
+                name: args.dto_name,
+                fields_to_retrun: args.fields_to_return.split(" ").collect(),
+                field_to_filtter: None,
+            };
+            match add_one_sql_funk(handle_data) {
+                Ok(_) => (),
+                Err(e) => println!("sql gen error: {e}"),
+            }
+        }
         var if var == "sql_crate" => match gen_sql_crate() {
             Ok(_) => (),
             Err(e) => print!("gen sql error : {e}"),
