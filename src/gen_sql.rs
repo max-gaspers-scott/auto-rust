@@ -14,7 +14,7 @@ pub async fn gen_sql(
     is_test: bool,
 ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
     let project_dir = current_dir().unwrap();
-    let migrations_dir = project_dir.join("migrations");
+    let migrations_dir = project_dir.join("backend/migrations");
     // Create parent directories
     println!("Creating directory: {}", migrations_dir.display());
     fs::create_dir_all(&migrations_dir).map_err(|e| {
