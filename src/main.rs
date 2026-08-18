@@ -68,7 +68,7 @@ async fn main() -> Result<(), std::io::Error> {
     //setup::setup
     let a = match args.command {
         Commands::Setup => setup::setup(),
-        Commands::Sql { sql } => gen_sql(sql, request_ai::gemini_for_sql),
+        Commands::Sql { sql } => gen_sql(sql, request_ai::mgs_proxy),
         Commands::GetEndpoint {
             dto_name,
             fields_to_return,

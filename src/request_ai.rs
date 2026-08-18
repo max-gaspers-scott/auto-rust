@@ -1,5 +1,7 @@
-use std::fs;
+use serde_json;
+use std::fmt::format;
 use std::path::PathBuf;
+use std::{fs, io};
 pub fn ai_test(user_reqwest: String) -> String {
     r#"
      CREATE TABLE IF NOT EXISTS users (
@@ -23,6 +25,7 @@ use reqwest::{
     header::{ACCEPT, CONTENT_TYPE},
 };
 use serde::{Deserialize, Serialize};
+
 use std::env;
 
 //TODO: test
@@ -238,68 +241,72 @@ struct ChatCompletionResponse {
     choices: Vec<ChatCompletionChoice>,
 }
 
-// pub fn mgs_proxy(user_reqwest: String) -> String {
-//     let client = reqwest::blocking::Client::new();
-//     let payload = ChatPayload {
-//         model: "gemini-2.5-flash".to_string(),
-//         messages: vec![ChatMessage {
-//             role: "user".to_string(),
-//             content: user_reqwest,
-//         }],
-//     };
-//
-//     let config_dir = dirs::config_dir().context("could not determine config directory")?;
-//     let dir = config_dir.join("auto-rust-cli");
-//     fs::create_dir_all(&dir).context("could not create config directory")?;
-//     let path = dir.join("token");
-//     let token = fs::read_to_string(&path).context("no saved token — run `mgs login` first");
-//
-//     let api_url = "https://localhost:8081";
-//     let resp = client
-//         .post(format!("{api_url}/v1/chat/completions"))
-//         .bearer_auth(&token)
-//         .json(&payload)
-//         .send()
-//         .context("could not reach the server")?;
-//
-//     let status = resp.status();
-//
-//     if status == reqwest::StatusCode::UNAUTHORIZED {
-//         panic!("token expired or invalid — run `mgs login` again");
-//     }
-//
-//     if !status.is_success() {
-//         let body: serde_json::Value = resp.json().unwrap_or_default();
-//         let msg = body["error"]["message"].as_str().unwrap_or("unknown error");
-//         panic!("chat failed (HTTP {}): {}", status, msg);
-//     }
-//
-//     let body: ChatCompletionResponse = resp.json().context("server returned invalid JSON")?;
-//     let reply = body
-//         .choices
-//         .into_iter()
-//         .next()
-//         .map(|c| c.message.content)
-//         .unwrap_or_else(|| "(no response)".to_string());
-//
-//     println!("\nGemini: {}", reply);
-//     reply
-// }
+pub fn mgs_proxy(user_reqwest: String) -> String {
+    let client = reqwest::blocking::Client::new();
+    let payload = ChatPayload {
+        model: "gemini-2.5-flash".to_string(),
+        messages: vec![ChatMessage {
+            role: "user".to_string(),
+            content: user_reqwest,
+        }],
+    };
+
+    let config_dir = dirs::config_dir().unwrap();
+    let dir = config_dir.join("auto-rust-cli");
+    fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("token.txt");
+    let err_msg = format!("{} is a dir", path.display());
+    let token = fs::read_to_string(&path).expect(&err_msg);
+
+    let api_url = "http://localhost:8081";
+    let resp = client
+        .post(format!("{api_url}/v1/chat/completions"))
+        .bearer_auth(&token)
+        .json(&payload)
+        .send()
+        .unwrap();
+
+    let status = resp.status();
+
+    if status == reqwest::StatusCode::UNAUTHORIZED {
+        panic!("token expired or invalid — run `mgs login` again");
+    }
+
+    if !status.is_success() {
+        let body: serde_json::Value = resp.json().unwrap_or_default();
+        let msg = body["error"]["message"].as_str().unwrap_or("unknown error");
+        panic!("chat failed (HTTP {}): {}", status, msg);
+    }
+
+    let body: ChatCompletionResponse = resp.json().unwrap();
+    let reply = body
+        .choices
+        .into_iter()
+        .next()
+        .map(|c| c.message.content)
+        .unwrap_or_else(|| "(no response)".to_string());
+
+    println!("\nGemini: {}", reply);
+    reply
+}
 
 pub fn login(email: String, password: String) {
     let client = reqwest::blocking::Client::new();
 
     let payload = LoginPayload { email, password };
 
-    let api_url = "https://localhost:8081";
+    let api_url = "http://localhost:8081";
     let resp = client
         .post(format!("{api_url}/api/login"))
         .json(&payload)
         .send()
         .unwrap();
+
+    let status = resp.status();
+    let body: LoginResponse = resp.json().unwrap();
     if status.is_success() {
         if let Some(token) = body.token {
-            save_token(&token).unwrap();
+            save_token(&token);
             let path = token_path().unwrap();
             println!("✓ Logged in. Token saved to {}", path.display());
         } else {
@@ -314,20 +321,20 @@ pub fn login(email: String, password: String) {
 //     token helpers
 // ======================
 
-fn token_path() -> Result<PathBuf> {
+fn token_path() -> Option<PathBuf> {
     let config_dir = dirs::config_dir()?;
     let dir = config_dir.join("mgs-cli");
-    fs::create_dir_all(&dir)?;
-    Ok(dir.join("token"))
+    fs::create_dir_all(&dir).unwrap();
+    Some(dir.join("token"))
 }
 
-fn load_token() -> Result<String> {
-    let path = token_path()?;
+fn load_token() -> io::Result<String> {
+    let path = token_path().unwrap();
     fs::read_to_string(&path)
 }
 
-fn save_token(token: &str) -> Result<()> {
-    let path = token_path()?;
+fn save_token(token: &str) -> io::Result<()> {
+    let path = token_path().unwrap();
     fs::write(&path, token).unwrap();
     // Restrict permissions to owner-only on Unix
     #[cfg(unix)]

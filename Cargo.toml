@@ -32,6 +32,7 @@ file_ops = { path = "./file_ops" }
 random-number = "0.1.9"
 rand = "0.10.1"
 dirs = "6.0.0"
+serde_json = "1.0.151"
 
 [build-dependencies]
 

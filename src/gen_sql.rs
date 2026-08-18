@@ -12,8 +12,6 @@ use reqwest::{
 use serde::{Deserialize, Serialize};
 use std::env;
 
-use crate::request_ai::ai_test;
-
 pub fn gen_sql(
     sql_task: String,
     get_sql: impl Fn(String) -> String,
