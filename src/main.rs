@@ -1,16 +1,19 @@
 mod add_compose;
+mod models;
+use auto_rust::request_ai;
+use models::*;
 use std::{env::current_dir, path::Path};
-mod cicd;
-mod fix_structs;
-mod gen_docker;
-use clap::Parser;
 mod add_fastapi;
 mod add_minio;
 mod add_python;
 mod add_react;
 mod boilerplate;
+mod cicd;
+mod fix_structs;
+mod gen_docker;
 mod gen_sql;
 mod gen_toml;
+use clap::{Parser, Subcommand};
 // mod llm;
 mod add_one_sql_funk;
 mod gen_sql_crate;
@@ -29,133 +32,143 @@ use boilerplate::{add_axum_end, add_top_boilerplate};
 use gen_sql::gen_sql;
 use std::io;
 
-#[derive(Parser, Debug)]
+#[derive(Parser)]
 #[command(version, about, long_about = None)]
 pub struct Args {
-    #[arg(short, long)]
-    what_to_make: String,
-    #[arg(short, long, default_value_t = String::from("no_sql"))]
-    sql: String,
-    #[arg(short, long, default_value_t = String::from("no_table_name"))]
-    dto_name: String,
-    #[arg(short, long, default_value_t = String::from("no_return_fields"))]
-    fields_to_return: String,
-    field_to_filtter: Option<String>,
+    #[command(subcommand)]
+    command: Commands,
 }
 
-pub struct HandelerMetaData {
-    name: String,
-    fields_to_retrun: Vec<String>,
-    field_to_filtter: Option<String>,
-}
-
-#[derive(Clone)]
-enum Options {
+#[derive(Subcommand)]
+enum Commands {
     Setup,
-    Sql,
-    GetEndpoint,
-    Post,
+    Sql {
+        #[arg(short, long)]
+        sql: String,
+    },
+    GetEndpoint {
+        #[arg(short, long)]
+        dto_name: String,
+        #[arg(short, long)]
+        fields_to_return: String,
+        #[arg(short, long)]
+        field_to_filtter: Option<String>,
+    },
+    Post {
+        #[arg(short, long)]
+        dto_name: String,
+    },
     PubStruct,
+    Login,
 }
-
-fn to_option(string_param: String) -> Options {
-    match string_param {
-        String::from("setup") => Options::Setup,
-        _ => Options::Sql,
-    }
-}
-
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
     let args = Args::parse();
-    let option = args.what_to_make;
-    let option = to_option(option);
-    let project_dir = current_dir().expect("could not get current dir");
-    println!("Project directory: {}", project_dir.display());
+    //TODO: make andelrs be all in there own folder/file. be able to call handelr::setup insted of
+    //setup::setup
+    let a = match args.command {
+        Commands::Setup => setup::setup(),
+        Commands::Sql { sql } => gen_sql(sql, request_ai::mgs_proxy),
+        Commands::GetEndpoint {
+            dto_name,
+            fields_to_return,
+            field_to_filtter,
+        } => add_one_sql_funk(HandelerMetaData {
+            name: dto_name,
+            fields_to_retrun: fields_to_return,
+            field_to_filtter: field_to_filtter,
+        }),
+        _ => add_pub(),
+    };
 
-    match args.what_to_make {
-        var if var == "setup" => match setup::setup() {
-            Ok(_) => {
-                println!("setup_res successful");
-            }
-            Err(e) => {
-                println!("setup_res error: {}", e);
-            }
-        },
-        var if var == "sql" => {
-            // let mut sql_task = String::new();
-
-            let mut sql_task = args.sql;
-
-            let sql_task = if sql_task.trim().to_string().is_empty() {
-                String::from(
-                    "make a database to track infomation about hosts and renters for an airBnB like aplication. there are hosts that have a zip code, name, email, and password hash. there are also renters that have all the same colums expet the zip code.",
-                )
-            } else {
-                sql_task.trim().to_string()
-            };
-
-            // Generate SQL and create necessary files
-            match gen_sql(sql_task.clone(), false).await {
-                Ok(content) => {
-                    println!("Successfully generated SQL ({} bytes)", content.len());
-                }
-                Err(e) => {
-                    println!("sql error: {e}");
-                }
-            }
-        }
-        var if var == "python" => {
-            let path = project_dir.join("src/main.rs");
-            match add_python_func(&path) {
-                Ok(_) => (),
-                Err(e) => print!("python error: {e}"),
-            }
-        }
-
-        var if var == "get_endpoint" => {
-            let handle_data = HandelerMetaData {
-                name: args.dto_name,
-                fields_to_retrun: args.fields_to_return.split(" ").collect(),
-                field_to_filtter: None,
-            };
-            match add_one_sql_funk(handle_data) {
-                Ok(_) => (),
-                Err(e) => println!("sql gen error: {e}"),
-            }
-        }
-        var if var == "sql_crate" => match gen_sql_crate() {
-            Ok(_) => (),
-            Err(e) => print!("gen sql error : {e}"),
-        },
-        var if var == "post" => match add_one_post(args.dto_name) {
-            Ok(_) => (),
-            Err(e) => println!("post error: {e}"),
-        },
-        var if var == "minio" => {
-            let path = project_dir.join("src/main.rs");
-            println!("{}", path.display());
-            match add_minio(&path) {
-                Ok(_) => (),
-                Err(e) => println!("minio error: {e}"),
-            }
-        }
-        var if var == "pub_struct" => {
-            add_pub(&project_dir.join("backend/src/models"))?;
-        }
-        // var if var == "cicd" => {
-        //     add_git_acctions(&project_dir, &file_name)?;
-        // }
-        var if var == "h" => {
-            println!(
-                "valid options are: setup, sql, get_endpoint, sql_crate, post, minio, pub_struct"
-            );
-        }
-
-        _ => println!(
-            "valid options are: setup, sql, get_endpoint, sql_crate, post, minio, pub_struct"
-        ),
-    }
+    // let option = args.what_to_make;
+    // let option = to_option(option);
+    // let project_dir = current_dir().expect("could not get current dir");
+    // println!("Project directory: {}", project_dir.display());
+    //
+    // match args.what_to_make {
+    //     var if var == "setup" => match setup::setup() {
+    //         Ok(_) => {
+    //             println!("setup_res successful");
+    //         }
+    //         Err(e) => {
+    //             println!("setup_res error: {}", e);
+    //         }
+    //     },
+    //     var if var == "sql" => {
+    //         // let mut sql_task = String::new();
+    //
+    //         let mut sql_task = args.sql;
+    //
+    //         let sql_task = if sql_task.trim().to_string().is_empty() {
+    //             String::from(
+    //                 "make a database to track infomation about hosts and renters for an airBnB like aplication. there are hosts that have a zip code, name, email, and password hash. there are also renters that have all the same colums expet the zip code.",
+    //             )
+    //         } else {
+    //             sql_task.trim().to_string()
+    //         };
+    //
+    //         // Generate SQL and create necessary files
+    //         match gen_sql(sql_task.clone(), false).await {
+    //             Ok(content) => {
+    //                 println!("Successfully generated SQL ({} bytes)", content.len());
+    //             }
+    //             Err(e) => {
+    //                 println!("sql error: {e}");
+    //             }
+    //         }
+    //     }
+    //     var if var == "python" => {
+    //         let path = project_dir.join("src/main.rs");
+    //         match add_python_func(&path) {
+    //             Ok(_) => (),
+    //             Err(e) => print!("python error: {e}"),
+    //         }
+    //     }
+    //
+    //     var if var == "get_endpoint" => {
+    //         let handle_data = HandelerMetaData {
+    //             name: args.dto_name,
+    //             fields_to_retrun: args.fields_to_return.split(" ").collect(),
+    //             field_to_filtter: None,
+    //         };
+    //         match add_one_sql_funk(handle_data) {
+    //             Ok(_) => (),
+    //             Err(e) => println!("sql gen error: {e}"),
+    //         }
+    //     }
+    //     var if var == "sql_crate" => match gen_sql_crate() {
+    //         Ok(_) => (),
+    //         Err(e) => print!("gen sql error : {e}"),
+    //     },
+    //     var if var == "post" => match add_one_post(args.dto_name) {
+    //         Ok(_) => (),
+    //         Err(e) => println!("post error: {e}"),
+    //     },
+    //     var if var == "minio" => {
+    //         let path = project_dir.join("src/main.rs");
+    //         println!("{}", path.display());
+    //         match add_minio(&path) {
+    //             Ok(_) => (),
+    //             Err(e) => println!("minio error: {e}"),
+    //         }
+    //     }
+    //     var if var == "pub_struct" => {
+    //         add_pub(&project_dir.join("backend/src/models"))?;
+    //     }
+    //     // var if var == "cicd" => {
+    //     //     add_git_acctions(&project_dir, &file_name)?;
+    //     // }
+    //     var if var == "h" => {
+    //         println!(
+    //             "valid options are: setup, sql, get_endpoint, sql_crate, post, minio, pub_struct"
+    //         );
+    //     }
+    //
+    //     _ => println!(
+    //         "valid options are: setup, sql, get_endpoint, sql_crate, post, minio, pub_struct"
+    //     ),
+    // }
     Ok(())
 }
 
