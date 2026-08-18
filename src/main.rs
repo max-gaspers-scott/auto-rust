@@ -59,10 +59,14 @@ enum Commands {
         dto_name: String,
     },
     PubStruct,
-    Login,
+    Login {
+        #[arg(short, long)]
+        email: String,
+        #[arg(short, long)]
+        password: String,
+    },
 }
-#[tokio::main]
-async fn main() -> Result<(), std::io::Error> {
+fn main() -> Result<(), std::io::Error> {
     let args = Args::parse();
     //TODO: make andelrs be all in there own folder/file. be able to call handelr::setup insted of
     //setup::setup
@@ -78,7 +82,9 @@ async fn main() -> Result<(), std::io::Error> {
             fields_to_retrun: fields_to_return,
             field_to_filtter: field_to_filtter,
         }),
-        _ => add_pub(),
+        Commands::Post { dto_name } => add_one_post(dto_name),
+        Commands::PubStruct => add_pub(),
+        Commands::Login { email, password } => request_ai::login(email, password),
     };
 
     // let option = args.what_to_make;

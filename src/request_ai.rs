@@ -269,7 +269,7 @@ pub fn mgs_proxy(user_reqwest: String) -> String {
     let status = resp.status();
 
     if status == reqwest::StatusCode::UNAUTHORIZED {
-        panic!("token expired or invalid — run `mgs login` again");
+        panic!("token expired or invalid — run `auto rust login` again");
     }
 
     if !status.is_success() {
@@ -290,7 +290,10 @@ pub fn mgs_proxy(user_reqwest: String) -> String {
     reply
 }
 
-pub fn login(email: String, password: String) {
+pub fn login(
+    email: String,
+    password: String,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let client = reqwest::blocking::Client::new();
 
     let payload = LoginPayload { email, password };
@@ -315,6 +318,7 @@ pub fn login(email: String, password: String) {
     } else {
         panic!("login failed (HTTP {}): {}", status, body.res);
     }
+    Ok(())
 }
 
 // ======================

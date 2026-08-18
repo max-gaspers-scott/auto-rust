@@ -120,7 +120,7 @@ async fn get_{return_underscors}_{match_col}(
     Ok(())
 }
 
-pub fn add_one_post(dto_name: String) -> Result<(), std::io::Error> {
+pub fn add_one_post(dto_name: String) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let sql_metadata = get_sql_metadata(dto_name);
     let all_lines: Vec<&str> = sql_metadata.sql.lines().collect();
     let len = all_lines.len();
@@ -128,7 +128,7 @@ pub fn add_one_post(dto_name: String) -> Result<(), std::io::Error> {
         return Err(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
             "Model file has fewer than 4 lines",
-        ));
+        ))?;
     }
 
     let lines = &all_lines[2..len - 1];

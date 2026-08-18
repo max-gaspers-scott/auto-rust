@@ -1,8 +1,11 @@
+use clap::Error;
 use file_ops::append_to_file;
 
 use std::{fs, io};
 
-pub fn add_top_boilerplate(file_path: &std::path::Path) -> Result<(), io::Error> {
+pub fn add_top_boilerplate(
+    file_path: &std::path::Path,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let top_boiler = r###"
 use axum::{
     extract::{self, Path, Query},
