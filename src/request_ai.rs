@@ -28,19 +28,8 @@ use serde::{Deserialize, Serialize};
 
 use std::env;
 
-//TODO: test
-pub fn gemini_for_sql(user_reqwest: String) -> String {
-    dotenv().ok();
-    let api_key_name = "GEMINI_API_KEY";
-    let api_key: String = match env::var(api_key_name) {
-        Ok(val) => val.trim().to_string(),
-        Err(e) => {
-            println!("couldn't interpret {api_key_name}: {e}");
-            format!("{}", e)
-        }
-    };
-
-    let prompt = format!(
+fn add_instructions(user_reqwest: String) -> String {
+    format!(
         r#"you are a postgresSQL database designer. Here is how you should write postgres SQL code to define a database.
 
      Tables should be defined with CREATE TABLE IF NOT EXISTS.
@@ -101,8 +90,22 @@ pub fn gemini_for_sql(user_reqwest: String) -> String {
 
      now the teask is: {}"#,
         user_reqwest
-    );
+    )
+}
 
+//TODO: test
+pub fn gemini_for_sql(user_reqwest: String) -> String {
+    dotenv().ok();
+    let api_key_name = "GEMINI_API_KEY";
+    let api_key: String = match env::var(api_key_name) {
+        Ok(val) => val.trim().to_string(),
+        Err(e) => {
+            println!("couldn't interpret {api_key_name}: {e}");
+            format!("{}", e)
+        }
+    };
+
+    let prompt = add_instructions(user_reqwest);
     #[derive(Deserialize, Debug, Serialize)]
     struct Part {
         text: String,
@@ -241,24 +244,24 @@ struct ChatCompletionResponse {
     choices: Vec<ChatCompletionChoice>,
 }
 
+fn get_url() -> String {
+    "https://mgs-proxy.team-stingray.com".to_string()
+}
+
 pub fn mgs_proxy(user_reqwest: String) -> String {
     let client = reqwest::blocking::Client::new();
+    let prompt = add_instructions(user_reqwest);
     let payload = ChatPayload {
         model: "gemini-2.5-flash".to_string(),
         messages: vec![ChatMessage {
             role: "user".to_string(),
-            content: user_reqwest,
+            content: prompt,
         }],
     };
 
-    let config_dir = dirs::config_dir().unwrap();
-    let dir = config_dir.join("auto-rust-cli");
-    fs::create_dir_all(&dir).unwrap();
-    let path = dir.join("token.txt");
-    let err_msg = format!("{} is a dir", path.display());
-    let token = fs::read_to_string(&path).expect(&err_msg);
+    let token = load_token().expect("failed to load token — run `auto-rust login` first");
 
-    let api_url = "http://localhost:8081";
+    let api_url = get_url();
     let resp = client
         .post(format!("{api_url}/v1/chat/completions"))
         .bearer_auth(&token)
@@ -269,7 +272,7 @@ pub fn mgs_proxy(user_reqwest: String) -> String {
     let status = resp.status();
 
     if status == reqwest::StatusCode::UNAUTHORIZED {
-        panic!("token expired or invalid — run `mgs login` again");
+        panic!("token expired or invalid — run `auto rust login` again");
     }
 
     if !status.is_success() {
@@ -290,12 +293,15 @@ pub fn mgs_proxy(user_reqwest: String) -> String {
     reply
 }
 
-pub fn login(email: String, password: String) {
+pub fn login(
+    email: String,
+    password: String,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let client = reqwest::blocking::Client::new();
 
     let payload = LoginPayload { email, password };
 
-    let api_url = "http://localhost:8081";
+    let api_url = get_url();
     let resp = client
         .post(format!("{api_url}/api/login"))
         .json(&payload)
@@ -315,6 +321,7 @@ pub fn login(email: String, password: String) {
     } else {
         panic!("login failed (HTTP {}): {}", status, body.res);
     }
+    Ok(())
 }
 
 // ======================

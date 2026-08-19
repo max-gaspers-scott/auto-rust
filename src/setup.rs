@@ -3,6 +3,7 @@ use crate::add_react::create_react_app;
 use crate::boilerplate::{add_axum_end, add_top_boilerplate};
 use crate::gen_docker::gen_docker;
 use crate::gen_toml;
+use core::error;
 use std::env::current_dir;
 use std::net::{SocketAddr, TcpListener};
 use std::process::Command;
@@ -16,7 +17,8 @@ pub fn setup() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .current_dir(&project_dir)
         .arg("new")
         .arg("backend")
-        .output()?;
+        .output()
+        .unwrap();
 
     if !output.status.success() {
         eprintln!(
@@ -37,7 +39,7 @@ pub fn setup() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         Err(e) => eprintln!("Failed to generate TOML: {}", e),
     };
 
-    add_top_boilerplate(&project_dir.join("backend/src/main.rs"))?;
+    add_top_boilerplate(&project_dir.join("backend/src/main.rs"));
 
     // TODO: this looks like a dublicat of the add_minio function
     // add_object(&path);
