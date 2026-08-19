@@ -241,6 +241,10 @@ struct ChatCompletionResponse {
     choices: Vec<ChatCompletionChoice>,
 }
 
+fn get_url() -> String {
+    "https://mgs-proxy.team-stingray.com".to_string()
+}
+
 pub fn mgs_proxy(user_reqwest: String) -> String {
     let client = reqwest::blocking::Client::new();
     let payload = ChatPayload {
@@ -251,14 +255,9 @@ pub fn mgs_proxy(user_reqwest: String) -> String {
         }],
     };
 
-    let config_dir = dirs::config_dir().unwrap();
-    let dir = config_dir.join("auto-rust-cli");
-    fs::create_dir_all(&dir).unwrap();
-    let path = dir.join("token.txt");
-    let err_msg = format!("{} is a dir", path.display());
-    let token = fs::read_to_string(&path).expect(&err_msg);
+    let token = load_token().expect("failed to load token — run `auto-rust login` first");
 
-    let api_url = "http://localhost:8081";
+    let api_url = get_url();
     let resp = client
         .post(format!("{api_url}/v1/chat/completions"))
         .bearer_auth(&token)
@@ -298,7 +297,7 @@ pub fn login(
 
     let payload = LoginPayload { email, password };
 
-    let api_url = "http://localhost:8081";
+    let api_url = get_url();
     let resp = client
         .post(format!("{api_url}/api/login"))
         .json(&payload)
