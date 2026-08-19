@@ -28,19 +28,8 @@ use serde::{Deserialize, Serialize};
 
 use std::env;
 
-//TODO: test
-pub fn gemini_for_sql(user_reqwest: String) -> String {
-    dotenv().ok();
-    let api_key_name = "GEMINI_API_KEY";
-    let api_key: String = match env::var(api_key_name) {
-        Ok(val) => val.trim().to_string(),
-        Err(e) => {
-            println!("couldn't interpret {api_key_name}: {e}");
-            format!("{}", e)
-        }
-    };
-
-    let prompt = format!(
+fn add_instructions(user_reqwest: String) -> String {
+    format!(
         r#"you are a postgresSQL database designer. Here is how you should write postgres SQL code to define a database.
 
      Tables should be defined with CREATE TABLE IF NOT EXISTS.
@@ -101,8 +90,22 @@ pub fn gemini_for_sql(user_reqwest: String) -> String {
 
      now the teask is: {}"#,
         user_reqwest
-    );
+    )
+}
 
+//TODO: test
+pub fn gemini_for_sql(user_reqwest: String) -> String {
+    dotenv().ok();
+    let api_key_name = "GEMINI_API_KEY";
+    let api_key: String = match env::var(api_key_name) {
+        Ok(val) => val.trim().to_string(),
+        Err(e) => {
+            println!("couldn't interpret {api_key_name}: {e}");
+            format!("{}", e)
+        }
+    };
+
+    let prompt = add_instructions(user_reqwest);
     #[derive(Deserialize, Debug, Serialize)]
     struct Part {
         text: String,
@@ -247,11 +250,12 @@ fn get_url() -> String {
 
 pub fn mgs_proxy(user_reqwest: String) -> String {
     let client = reqwest::blocking::Client::new();
+    let prompt = add_instructions(user_reqwest);
     let payload = ChatPayload {
         model: "gemini-2.5-flash".to_string(),
         messages: vec![ChatMessage {
             role: "user".to_string(),
-            content: user_reqwest,
+            content: prompt,
         }],
     };
 
