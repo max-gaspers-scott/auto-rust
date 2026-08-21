@@ -20,4 +20,4 @@ The generated program should be cloud-agnostic and able to run on a single VPS
 
 road map 
 * minio for media storage
-
+* integration with goose fork through mgs-proxy
