@@ -9,7 +9,7 @@ use std::net::{SocketAddr, TcpListener};
 use std::process::Command;
 
 pub fn setup() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let project_dir = current_dir().unwrap();
+    let project_dir = current_dir()?;
     let backend_path = project_dir.join("backend");
     println!("backend path is: {}", backend_path.display());
 
@@ -17,8 +17,7 @@ pub fn setup() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .current_dir(&project_dir)
         .arg("new")
         .arg("backend")
-        .output()
-        .unwrap();
+        .output()?;
 
     if !output.status.success() {
         eprintln!(
