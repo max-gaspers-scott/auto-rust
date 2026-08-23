@@ -8,9 +8,19 @@ const EXTENSIONS_CONFIG_KEY: &str = "extensions";
 const PROVIDERS_CONFIG_KEY: &str = "providers";
 const ACTIVE_PROVIDER_KEY: &str = "active_provider";
 
+/// Builtin MCP extensions that must be enabled for every install regardless of
+/// user config. Seeded into the `extensions:` block on load, mirroring how
+/// platform extensions honour their `default_enabled` flag.
+const DEFAULT_ENABLED_BUILTINS: &[(&str, &str, &str)] = &[(
+    "autorust",
+    "Auto Rust",
+    "Scaffold Rust web projects with Axum, PostgreSQL, Docker, and React. Generate SQL schemas, endpoints, and boilerplate code.",
+)];
+
 pub fn run_migrations(config: &mut Mapping) -> bool {
     let mut changed = false;
     changed |= migrate_platform_extensions(config);
+    changed |= migrate_builtin_extensions(config);
     changed |= migrate_provider_config(config);
     changed
 }
@@ -20,6 +30,52 @@ pub fn run_migrations(config: &mut Mapping) -> bool {
 /// `get_param()` callers may still look up directly.
 pub fn run_read_migrations(config: &mut Mapping) {
     migrate_platform_extensions(config);
+    migrate_builtin_extensions(config);
+}
+
+/// Seed always-on builtin extensions into the config if they are missing.
+/// Unlike platform extensions, builtins have no `default_enabled` field, so we
+/// track the always-enabled ones here. An entry the user has explicitly
+/// disabled is left untouched.
+fn migrate_builtin_extensions(config: &mut Mapping) -> bool {
+    let extensions_key = serde_yaml::Value::String(EXTENSIONS_CONFIG_KEY.to_string());
+
+    let mut extensions_map: Mapping = match config.get(&extensions_key).cloned() {
+        Some(serde_yaml::Value::Mapping(m)) => m,
+        _ => Mapping::new(),
+    };
+
+    let mut needs_save = false;
+
+    for (name, display_name, description) in DEFAULT_ENABLED_BUILTINS {
+        let ext_key = serde_yaml::Value::String(name.to_string());
+        if extensions_map.contains_key(&ext_key) {
+            continue;
+        }
+
+        let entry = ExtensionEntry {
+            config: ExtensionConfig::Builtin {
+                name: name.to_string(),
+                description: description.to_string(),
+                display_name: Some(display_name.to_string()),
+                timeout: None,
+                bundled: Some(true),
+                available_tools: Vec::new(),
+            },
+            enabled: true,
+        };
+
+        if let Ok(value) = serde_yaml::to_value(&entry) {
+            extensions_map.insert(ext_key, value);
+            needs_save = true;
+        }
+    }
+
+    if needs_save {
+        config.insert(extensions_key, serde_yaml::Value::Mapping(extensions_map));
+    }
+
+    needs_save
 }
 
 fn read_enabled_field(value: &serde_yaml::Value) -> Option<bool> {

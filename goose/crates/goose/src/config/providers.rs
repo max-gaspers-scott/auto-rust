@@ -62,6 +62,11 @@ pub fn set_provider_entry(
     })
 }
 
+/// Default provider/model used when nothing is configured, so goose runs
+/// against the mgs proxy with zero setup.
+const DEFAULT_PROVIDER: &str = "openai";
+const DEFAULT_MODEL: &str = "gemini-2.5-flash";
+
 pub fn get_active_provider(config: &Config) -> Option<String> {
     if let Ok(val) = env::var("GOOSE_PROVIDER") {
         return Some(val);
@@ -69,7 +74,11 @@ pub fn get_active_provider(config: &Config) -> Option<String> {
     if let Ok(val) = config.get_param::<String>(ACTIVE_PROVIDER_KEY) {
         return Some(val);
     }
-    config.get_param::<String>("GOOSE_PROVIDER").ok()
+    Some(
+        config
+            .get_param::<String>("GOOSE_PROVIDER")
+            .unwrap_or_else(|_| DEFAULT_PROVIDER.to_string()),
+    )
 }
 
 pub fn get_active_model(config: &Config) -> Option<String> {
@@ -83,7 +92,11 @@ pub fn get_active_model(config: &Config) -> Option<String> {
             }
         }
     }
-    config.get_param::<String>("GOOSE_MODEL").ok()
+    Some(
+        config
+            .get_param::<String>("GOOSE_MODEL")
+            .unwrap_or_else(|_| DEFAULT_MODEL.to_string()),
+    )
 }
 
 pub fn set_active_provider(config: &Config, name: &str, model: &str) -> Result<(), ConfigError> {
@@ -154,7 +167,10 @@ mod tests {
 
         clear_active_provider(&config).unwrap();
 
-        assert!(get_active_provider(&config).is_none());
+        assert_eq!(
+            get_active_provider(&config),
+            Some(DEFAULT_PROVIDER.to_string())
+        );
         let entry = get_provider_entry(&config, "openai").unwrap();
         assert_eq!(entry.model, "gpt-4o");
         assert!(entry.configured);
@@ -168,8 +184,11 @@ mod tests {
 
         clear_active_provider(&config).unwrap();
 
-        assert!(get_active_provider(&config).is_none());
-        assert!(get_active_model(&config).is_none());
+        assert_eq!(
+            get_active_provider(&config),
+            Some(DEFAULT_PROVIDER.to_string())
+        );
+        assert_eq!(get_active_model(&config), Some(DEFAULT_MODEL.to_string()));
     }
 
     #[test]

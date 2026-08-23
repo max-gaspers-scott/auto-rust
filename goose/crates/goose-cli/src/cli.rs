@@ -10,7 +10,9 @@ use goose::posthog::get_telemetry_choice;
 use goose::recipe::Recipe;
 use goose::source_roots::SourceRoot;
 use goose_mcp::mcp_server_runner::{serve, McpCommand};
-use goose_mcp::{AutoVisualiserRouter, ComputerControllerServer, MemoryServer, TutorialServer};
+use goose_mcp::{
+    AutoRustServer, AutoVisualiserRouter, ComputerControllerServer, MemoryServer, TutorialServer,
+};
 
 #[cfg(feature = "telemetry")]
 use crate::commands::configure::configure_telemetry_consent_dialog;
@@ -65,7 +67,7 @@ impl From<ServePlatform> for GoosePlatform {
 }
 
 #[derive(Parser)]
-#[command(name = "goose", author, version, display_name = "", about, long_about = None)]
+#[command(name = goose::config::APP_SLUG, author, version, display_name = goose::config::APP_DISPLAY_NAME, about, long_about = None)]
 pub struct Cli {
     #[command(subcommand)]
     command: Option<Command>,
@@ -816,6 +818,15 @@ enum Command {
     #[command(about = "Check that your Goose setup is working")]
     Doctor {},
 
+    /// Authenticate with the mgs proxy and store the JWT locally
+    #[command(about = "Log in to the mgs proxy and save a JWT to ~/.config/mgs-cli/token")]
+    Login {
+        #[arg(short, long)]
+        email: String,
+        #[arg(short, long)]
+        password: String,
+    },
+
     /// Manage system prompts and behaviors
     #[command(about = "Run one of the mcp servers bundled with goose")]
     Mcp {
@@ -1337,6 +1348,7 @@ fn get_command_name(command: &Option<Command>) -> &'static str {
     match command {
         Some(Command::Configure {}) => "configure",
         Some(Command::Doctor {}) => "doctor",
+        Some(Command::Login { .. }) => "login",
         Some(Command::Info { .. }) => "info",
         Some(Command::Mcp { .. }) => "mcp",
         Some(Command::Acp { .. }) => "acp",
@@ -1366,6 +1378,7 @@ async fn handle_mcp_command(server: McpCommand) -> Result<()> {
     let name = server.name();
     let _ = crate::logging::setup_logging(Some(&format!("mcp-{name}")));
     match server {
+        McpCommand::AutoRust => serve(AutoRustServer::new()).await?,
         McpCommand::AutoVisualiser => serve(AutoVisualiserRouter::new()).await?,
         McpCommand::ComputerController => serve(ComputerControllerServer::new()).await?,
         McpCommand::Memory => serve(MemoryServer::new()).await?,
@@ -2247,6 +2260,11 @@ pub async fn cli() -> anyhow::Result<()> {
         }
         Some(Command::Configure {}) => handle_configure().await,
         Some(Command::Doctor {}) => crate::commands::doctor::handle_doctor().await,
+        Some(Command::Login { email, password }) => {
+            tokio::task::spawn_blocking(move || auto_rust::request_ai::login(email, password))
+                .await?
+                .map_err(|e| anyhow::anyhow!("{e}"))
+        }
         Some(Command::Info { verbose, check }) => handle_info(verbose, check).await,
         Some(Command::Mcp { server }) => handle_mcp_command(server).await,
         Some(Command::Acp {

@@ -1,6 +1,5 @@
 pub mod analyze;
 pub mod apps;
-pub mod auto_rust;
 pub mod chatrecall;
 #[cfg(feature = "code-mode")]
 pub mod code_execution;
@@ -219,21 +218,6 @@ pub static PLATFORM_EXTENSIONS: Lazy<HashMap<&'static str, PlatformExtensionDef>
                 hidden: false,
                 client_factory: |ctx| {
                     Some(Box::new(crate::skills::SkillsClient::new(ctx).unwrap()))
-                },
-            },
-        );
-
-        map.insert(
-            auto_rust::EXTENSION_NAME,
-            PlatformExtensionDef {
-                name: auto_rust::EXTENSION_NAME,
-                display_name: "Auto Rust",
-                description: "Scaffold Rust web projects with Axum, PostgreSQL, Docker, and React. Generate SQL schemas, endpoints, and boilerplate code.",
-                default_enabled: false,
-                unprefixed_tools: false,
-                hidden: false,
-                client_factory: |ctx| {
-                    Some(Box::new(auto_rust::AutoRustClient::new(ctx).unwrap()))
                 },
             },
         );

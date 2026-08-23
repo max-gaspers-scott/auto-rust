@@ -1,4 +1,5 @@
 pub mod base;
+pub mod branding;
 pub mod declarative_providers;
 mod experiments;
 pub mod extensions;
@@ -13,6 +14,7 @@ pub mod tls;
 
 pub use crate::agents::ExtensionConfig;
 pub use base::{merge_config_values, Config, ConfigError};
+pub use branding::{APP_DISPLAY_NAME, APP_SLUG};
 pub use declarative_providers::DeclarativeProviderConfig;
 pub use experiments::ExperimentManager;
 pub use extensions::{

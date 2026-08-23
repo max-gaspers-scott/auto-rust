@@ -77,11 +77,24 @@ fn main() -> Result<(), std::io::Error> {
             dto_name,
             fields_to_return,
             field_to_filtter,
-        } => add_one_sql_funk(HandelerMetaData {
-            name: dto_name,
-            fields_to_retrun: fields_to_return,
-            field_to_filtter: field_to_filtter,
-        }),
+        } => {
+            let match_col = match field_to_filtter {
+                Some(col) => col,
+                None => {
+                    println!("what colum do you want to match (the select ___ part)");
+                    let mut input = String::new();
+                    io::stdin()
+                        .read_line(&mut input)
+                        .expect("error reading from std in");
+                    input.trim_end().to_string()
+                }
+            };
+            add_one_sql_funk(HandelerMetaData {
+                name: dto_name,
+                fields_to_retrun: fields_to_return,
+                field_to_filtter: Some(match_col),
+            })
+        }
         Commands::Post { dto_name } => add_one_post(dto_name),
         Commands::PubStruct => add_pub(),
         Commands::Login { email, password } => request_ai::login(email, password),
