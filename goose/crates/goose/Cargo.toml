@@ -152,7 +152,6 @@ sqlx = { version = "0.9.0", default-features = false, features = [
     "macros",
     "migrate",
 ] }
-auto_rust = { package = "auto-rust", path = "../../.." }
 
 # For Bedrock provider (optional, behind "aws-providers" feature)
 aws-config = { version = "1.8", default-features = false, features = ["credentials-process", "rt-tokio", "sso", "behavior-version-latest"], optional = true }

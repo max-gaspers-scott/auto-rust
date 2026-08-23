@@ -29,7 +29,7 @@ fn get_sql_metadata(dto_name: String) -> SqlMetadata {
     }
 }
 
-use std::{fs, io};
+use std::fs;
 
 pub fn add_one_sql_funk(
     handelr_data: HandelerMetaData,
@@ -54,12 +54,16 @@ pub fn add_one_sql_funk(
     // ask about what colums to return
     let return_cols = handelr_data.fields_to_retrun.trim_end().to_string();
     let return_underscors = return_cols.replace(" ", "_");
-    // ask what colum to match on
-    println!("what colum do you want to match (the select ___ part");
-    let mut match_col = String::new();
-    io::stdin()
-        .read_line(&mut match_col)
-        .expect("error readim from std in");
+    // colum to match on (the select ___ part)
+    let mut match_col = handelr_data
+        .field_to_filtter
+        .clone()
+        .ok_or_else(|| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "field_to_filtter (match column) is required",
+            )
+        })?;
 
     // write a func to main.rs
     println!("type is: {}", struct_type);

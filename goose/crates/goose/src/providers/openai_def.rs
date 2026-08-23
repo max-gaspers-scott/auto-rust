@@ -106,7 +106,13 @@ pub async fn from_env(
     let secrets = config
         .get_secrets("OPENAI_API_KEY", &["OPENAI_CUSTOM_HEADERS"])
         .unwrap_or_default();
-    let api_key: Option<String> = secrets.get("OPENAI_API_KEY").cloned();
+    // Prefer an explicitly configured key, but fall back to the JWT bearer
+    // token written by `goose login` so the proxy works with no config.
+    let api_key: Option<String> = secrets
+        .get("OPENAI_API_KEY")
+        .cloned()
+        .filter(|k| !k.is_empty())
+        .or_else(load_mgs_token);
     let custom_headers: Option<HashMap<String, String>> = secrets
         .get("OPENAI_CUSTOM_HEADERS")
         .cloned()
@@ -285,13 +291,31 @@ fn resolve_base_url(config: &crate::config::Config) -> Result<ParsedBaseUrl> {
 
     let h: String = config
         .get_param("OPENAI_HOST")
-        .unwrap_or_else(|_| "https://api.openai.com".to_string());
+        .unwrap_or_else(|_| MGS_PROXY_BASE_URL.to_string());
     Ok(ParsedBaseUrl {
         host: h,
         query_params: vec![],
         has_v1: true,
         from_base_url: false,
     })
+}
+
+/// Default proxy endpoint. goose is hardcoded to route OpenAI-compatible
+/// traffic here (Gemini via the mgs proxy) when no explicit host is configured.
+const MGS_PROXY_BASE_URL: &str = "https://mgs-proxy.team-stingray.com";
+
+/// Location of the JWT bearer token written by `goose login`.
+fn mgs_token_path() -> Option<std::path::PathBuf> {
+    dirs::config_dir().map(|d| d.join("mgs-cli").join("token"))
+}
+
+/// Load the JWT bearer token from `~/.config/mgs-cli/token`, if present.
+fn load_mgs_token() -> Option<String> {
+    let path = mgs_token_path()?;
+    std::fs::read_to_string(path)
+        .ok()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
 }
 
 /// Whether `host` points at OpenAI directly.

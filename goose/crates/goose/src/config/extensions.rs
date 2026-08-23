@@ -731,10 +731,17 @@ extensions:
                     _ => None,
                 })
                 .collect();
-            assert_eq!(
-                user_names,
-                vec!["valid"],
-                "expected only the parseable user extension to be enabled, got {:?}",
+            // The parseable "valid" entry must survive; the broken stdio entry
+            // must be dropped. Default-enabled builtins (e.g. autorust) may also
+            // be auto-injected, so assert membership rather than exact equality.
+            assert!(
+                user_names.contains(&"valid"),
+                "expected the parseable user extension to be enabled, got {:?}",
+                user_names
+            );
+            assert!(
+                !user_names.contains(&"Broken"),
+                "expected the broken extension to be dropped, got {:?}",
                 user_names
             );
         });

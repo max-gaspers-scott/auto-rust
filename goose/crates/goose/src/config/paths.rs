@@ -16,15 +16,14 @@ impl Paths {
                 DirType::AgentsHome => base.join(".agents"),
             }
         } else {
-            // NOTE: "Block" is kept here for backwards compatibility with existing
-            // user config/data directories (e.g. ~/Library/Application Support/Block/goose/).
-            // Changing this would orphan existing installations.
+            // app_name is the branding slug so this fork's config/data/state
+            // live in a directory separate from an upstream goose install.
             let strategy = choose_app_strategy(AppStrategyArgs {
-                top_level_domain: "Block".to_string(),
-                author: "Block".to_string(),
-                app_name: "goose".to_string(),
+                top_level_domain: crate::config::branding::APP_SLUG.to_string(),
+                author: crate::config::branding::APP_SLUG.to_string(),
+                app_name: crate::config::branding::APP_SLUG.to_string(),
             })
-            .expect("goose requires a home dir");
+            .expect("a home directory is required");
 
             match dir_type {
                 DirType::Config => strategy.config_dir(),
