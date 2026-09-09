@@ -12,7 +12,7 @@ services:
       POSTGRES_USER: dbuser
       POSTGRES_PASSWORD: p
       POSTGRES_DB: data
-     ports:
+    ports:
        - \"1111:5432\"
     volumes:
       - postgres_data:/var/lib/postgresql/data

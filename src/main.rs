@@ -59,6 +59,8 @@ enum Commands {
         dto_name: String,
     },
     PubStruct,
+    SqlCrate,
+
     Login {
         #[arg(short, long)]
         email: String,
@@ -97,6 +99,7 @@ fn main() -> Result<(), std::io::Error> {
         }
         Commands::Post { dto_name } => add_one_post(dto_name),
         Commands::PubStruct => add_pub(),
+        Commands::SqlCrate => gen_sql_crate(),
         Commands::Login { email, password } => request_ai::login(email, password),
     };
 

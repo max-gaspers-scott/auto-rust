@@ -3,7 +3,7 @@ use std::{
     process::Command,
 };
 
-pub fn gen_sql_crate() -> Result<(), std::io::Error> {
+pub fn gen_sql_crate() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let sql_path = current_dir()
         .unwrap()
         .join("backend/migrations/0001_data.sql");
@@ -71,10 +71,7 @@ pub fn gen_sql_crate() -> Result<(), std::io::Error> {
             _ => {
                 attempts += 1;
                 if attempts >= max_attempts {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::TimedOut,
-                        "PostgreSQL failed to start within timeout",
-                    ));
+                    panic!();
                 }
                 std::thread::sleep(std::time::Duration::from_secs(2));
             }
